@@ -1,0 +1,335 @@
+// MusicBrainz API Service
+// API Documentation: https://musicbrainz.org/doc/MusicBrainz_API
+
+const BASE_URL = "https://musicbrainz.org/ws/2";
+const COVER_ART_URL = "https://coverartarchive.org";
+const USER_AGENT = "RateTheMusic/1.0.0 (https://ratethemusic.app)";
+
+// Rate limiting: MusicBrainz requires 1 request per second
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 1100; // 1.1 seconds to be safe
+
+async function rateLimitedFetch(url: string): Promise<Response> {
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    await new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest));
+  }
+  
+  lastRequestTime = Date.now();
+  
+  return fetch(url, {
+    headers: {
+      "User-Agent": USER_AGENT,
+      "Accept": "application/json",
+    },
+  });
+}
+
+export interface MusicBrainzArtist {
+  id: string;
+  name: string;
+  "sort-name": string;
+  type?: string;
+  country?: string;
+  "life-span"?: {
+    begin?: string;
+    end?: string;
+    ended?: boolean;
+  };
+  disambiguation?: string;
+  tags?: Array<{ name: string; count: number }>;
+}
+
+export interface MusicBrainzRelease {
+  id: string;
+  title: string;
+  date?: string;
+  "release-group"?: {
+    id: string;
+    "primary-type"?: string;
+    title: string;
+  };
+  "artist-credit"?: Array<{
+    artist: MusicBrainzArtist;
+  }>;
+  media?: Array<{
+    tracks?: Array<{
+      id: string;
+      number: string;
+      title: string;
+      length?: number;
+      recording: {
+        id: string;
+        title: string;
+        length?: number;
+      };
+    }>;
+  }>;
+}
+
+export interface MusicBrainzRecording {
+  id: string;
+  title: string;
+  length?: number;
+  "artist-credit"?: Array<{
+    artist: MusicBrainzArtist;
+  }>;
+  releases?: MusicBrainzRelease[];
+}
+
+export interface MusicBrainzReleaseGroup {
+  id: string;
+  title: string;
+  "primary-type"?: string;
+  "first-release-date"?: string;
+  "artist-credit"?: Array<{
+    artist: MusicBrainzArtist;
+  }>;
+}
+
+export interface SearchResult {
+  id: string;
+  type: "artist" | "album" | "song";
+  name: string;
+  subtitle?: string;
+  imageUrl?: string;
+}
+
+// Search for artists
+export async function searchArtists(query: string, limit = 25): Promise<SearchResult[]> {
+  try {
+    const response = await rateLimitedFetch(
+      `${BASE_URL}/artist?query=${encodeURIComponent(query)}&limit=${limit}&fmt=json`
+    );
+    
+    if (!response.ok) throw new Error("Failed to search artists");
+    
+    const data = await response.json();
+    
+    return (data.artists || []).map((artist: MusicBrainzArtist) => ({
+      id: artist.id,
+      type: "artist" as const,
+      name: artist.name,
+      subtitle: artist.disambiguation || artist.country || artist.type,
+    }));
+  } catch (error) {
+    console.error("Error searching artists:", error);
+    return [];
+  }
+}
+
+// Search for releases (albums)
+export async function searchAlbums(query: string, limit = 25): Promise<SearchResult[]> {
+  try {
+    const response = await rateLimitedFetch(
+      `${BASE_URL}/release-group?query=${encodeURIComponent(query)}&limit=${limit}&fmt=json`
+    );
+    
+    if (!response.ok) throw new Error("Failed to search albums");
+    
+    const data = await response.json();
+    
+    return (data["release-groups"] || []).map((rg: MusicBrainzReleaseGroup) => ({
+      id: rg.id,
+      type: "album" as const,
+      name: rg.title,
+      subtitle: rg["artist-credit"]?.[0]?.artist?.name,
+    }));
+  } catch (error) {
+    console.error("Error searching albums:", error);
+    return [];
+  }
+}
+
+// Search for recordings (songs)
+export async function searchSongs(query: string, limit = 25): Promise<SearchResult[]> {
+  try {
+    const response = await rateLimitedFetch(
+      `${BASE_URL}/recording?query=${encodeURIComponent(query)}&limit=${limit}&fmt=json`
+    );
+    
+    if (!response.ok) throw new Error("Failed to search songs");
+    
+    const data = await response.json();
+    
+    return (data.recordings || []).map((rec: MusicBrainzRecording) => ({
+      id: rec.id,
+      type: "song" as const,
+      name: rec.title,
+      subtitle: rec["artist-credit"]?.[0]?.artist?.name,
+    }));
+  } catch (error) {
+    console.error("Error searching songs:", error);
+    return [];
+  }
+}
+
+// Combined search
+export async function searchAll(query: string, limit = 10): Promise<SearchResult[]> {
+  try {
+    const [artists, albums, songs] = await Promise.all([
+      searchArtists(query, limit),
+      searchAlbums(query, limit),
+      searchSongs(query, limit),
+    ]);
+    
+    // Interleave results
+    const results: SearchResult[] = [];
+    const maxLen = Math.max(artists.length, albums.length, songs.length);
+    
+    for (let i = 0; i < maxLen; i++) {
+      if (artists[i]) results.push(artists[i]);
+      if (albums[i]) results.push(albums[i]);
+      if (songs[i]) results.push(songs[i]);
+    }
+    
+    return results.slice(0, limit * 3);
+  } catch (error) {
+    console.error("Error in combined search:", error);
+    return [];
+  }
+}
+
+// Get artist details
+export async function getArtist(id: string): Promise<MusicBrainzArtist | null> {
+  try {
+    const response = await rateLimitedFetch(
+      `${BASE_URL}/artist/${id}?inc=tags+ratings&fmt=json`
+    );
+    
+    if (!response.ok) throw new Error("Failed to get artist");
+    
+    return response.json();
+  } catch (error) {
+    console.error("Error getting artist:", error);
+    return null;
+  }
+}
+
+// Get artist's release groups (albums)
+export async function getArtistReleaseGroups(artistId: string): Promise<MusicBrainzReleaseGroup[]> {
+  try {
+    const response = await rateLimitedFetch(
+      `${BASE_URL}/release-group?artist=${artistId}&type=album|ep&limit=100&fmt=json`
+    );
+    
+    if (!response.ok) throw new Error("Failed to get artist releases");
+    
+    const data = await response.json();
+    return data["release-groups"] || [];
+  } catch (error) {
+    console.error("Error getting artist releases:", error);
+    return [];
+  }
+}
+
+// Get release group (album) details
+export async function getReleaseGroup(id: string): Promise<MusicBrainzReleaseGroup | null> {
+  try {
+    const response = await rateLimitedFetch(
+      `${BASE_URL}/release-group/${id}?inc=artists+tags+ratings&fmt=json`
+    );
+    
+    if (!response.ok) throw new Error("Failed to get release group");
+    
+    return response.json();
+  } catch (error) {
+    console.error("Error getting release group:", error);
+    return null;
+  }
+}
+
+// Get releases for a release group (to get tracks)
+export async function getReleasesForGroup(releaseGroupId: string): Promise<MusicBrainzRelease[]> {
+  try {
+    const response = await rateLimitedFetch(
+      `${BASE_URL}/release?release-group=${releaseGroupId}&inc=recordings+artist-credits&limit=1&fmt=json`
+    );
+    
+    if (!response.ok) throw new Error("Failed to get releases");
+    
+    const data = await response.json();
+    return data.releases || [];
+  } catch (error) {
+    console.error("Error getting releases:", error);
+    return [];
+  }
+}
+
+// Get recording (song) details
+export async function getRecording(id: string): Promise<MusicBrainzRecording | null> {
+  try {
+    const response = await rateLimitedFetch(
+      `${BASE_URL}/recording/${id}?inc=artists+releases+tags+ratings&fmt=json`
+    );
+    
+    if (!response.ok) throw new Error("Failed to get recording");
+    
+    return response.json();
+  } catch (error) {
+    console.error("Error getting recording:", error);
+    return null;
+  }
+}
+
+// Get cover art for a release group
+export async function getCoverArt(releaseGroupId: string): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `${COVER_ART_URL}/release-group/${releaseGroupId}`,
+      { headers: { Accept: "application/json" } }
+    );
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    const front = data.images?.find((img: { front?: boolean }) => img.front);
+    return front?.thumbnails?.small || front?.image || data.images?.[0]?.thumbnails?.small || null;
+  } catch {
+    return null;
+  }
+}
+
+// Get Wikipedia summary for an artist
+export async function getWikipediaSummary(artistName: string): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(artistName)}`,
+      { headers: { Accept: "application/json" } }
+    );
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    return data.extract || null;
+  } catch {
+    return null;
+  }
+}
+
+// Get Wikipedia image
+export async function getWikipediaImage(name: string): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`,
+      { headers: { Accept: "application/json" } }
+    );
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    return data.thumbnail?.source || data.originalimage?.source || null;
+  } catch {
+    return null;
+  }
+}
+
+// Format duration from milliseconds
+export function formatDuration(ms?: number): string {
+  if (!ms) return "";
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}

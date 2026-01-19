@@ -1,55 +1,28 @@
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { HeroSection } from "@/components/HeroSection";
-import { RecentlyRated } from "@/components/RecentlyRated";
 import { ThisOrThat } from "@/components/ThisOrThat";
-import { Top100Preview } from "@/components/Top100Preview";
 import { MusicCard } from "@/components/MusicCard";
-
-// Mock data for demonstration
-const recentlyRated = [
-  {
-    id: "1",
-    type: "album" as const,
-    name: "Abbey Road",
-    imageUrl: "https://upload.wikimedia.org/wikipedia/en/4/42/Beatles_-_Abbey_Road.jpg",
-    rating: 9,
-    ratedBy: { id: "u1", username: "MusicFan42" },
-    ratedAt: new Date(Date.now() - 1000 * 60 * 15),
-  },
-  {
-    id: "2",
-    type: "song" as const,
-    name: "Bohemian Rhapsody",
-    rating: 10,
-    ratedBy: { id: "u2", username: "RockLover" },
-    ratedAt: new Date(Date.now() - 1000 * 60 * 30),
-  },
-  {
-    id: "3",
-    type: "artist" as const,
-    name: "Kendrick Lamar",
-    rating: 9,
-    ratedBy: { id: "u3", username: "HipHopHead" },
-    ratedAt: new Date(Date.now() - 1000 * 60 * 45),
-  },
-];
-
-const topAlbums = [
-  { rank: 1, id: "a1", type: "album" as const, name: "To Pimp a Butterfly", rating: 9.4, totalRatings: 15420, change: "same" as const },
-  { rank: 2, id: "a2", type: "album" as const, name: "OK Computer", rating: 9.3, totalRatings: 12890, change: "up" as const },
-  { rank: 3, id: "a3", type: "album" as const, name: "The Dark Side of the Moon", rating: 9.2, totalRatings: 18540, change: "down" as const },
-  { rank: 4, id: "a4", type: "album" as const, name: "Abbey Road", rating: 9.1, totalRatings: 16780, change: "same" as const },
-  { rank: 5, id: "a5", type: "album" as const, name: "Blonde", rating: 9.0, totalRatings: 11230, change: "up" as const },
-];
-
-const trendingMusic = [
-  { id: "t1", type: "artist" as const, name: "Taylor Swift", rating: 8.7, totalRatings: 45000 },
-  { id: "t2", type: "album" as const, name: "SOS", subtitle: "SZA", rating: 8.9, totalRatings: 8900 },
-  { id: "t3", type: "song" as const, name: "Vampire", subtitle: "Olivia Rodrigo", rating: 8.5, totalRatings: 12000 },
-  { id: "t4", type: "artist" as const, name: "Tyler, the Creator", rating: 8.8, totalRatings: 32000 },
-];
+import { Loader2 } from "lucide-react";
+import { searchAll, SearchResult } from "@/lib/musicbrainz";
 
 const Index = () => {
+  const [trendingMusic, setTrendingMusic] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTrending = async () => {
+      setLoading(true);
+      // Fetch some popular artists/albums to showcase
+      const results = await searchAll("taylor swift", 4);
+      setTrendingMusic(results);
+      setLoading(false);
+    };
+
+    fetchTrending();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -69,24 +42,61 @@ const Index = () => {
             <div className="lg:col-span-2 space-y-8">
               {/* Trending */}
               <section>
-                <h2 className="font-display text-2xl font-bold mb-6">Trending Now</h2>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {trendingMusic.map((item) => (
-                    <MusicCard
-                      key={item.id}
-                      {...item}
-                    />
-                  ))}
-                </div>
+                <h2 className="font-display text-2xl font-bold mb-6">Discover Music</h2>
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {trendingMusic.map((item) => (
+                      <MusicCard
+                        key={`${item.type}-${item.id}`}
+                        {...item}
+                      />
+                    ))}
+                  </div>
+                )}
               </section>
 
-              {/* Recently Rated */}
-              <RecentlyRated items={recentlyRated} />
+              {/* Recently Rated placeholder */}
+              <section className="py-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="font-display text-2xl font-bold">Recently Rated</h2>
+                </div>
+                <div className="glass-card rounded-xl p-8 text-center">
+                  <p className="text-muted-foreground">
+                    No ratings yet. Be the first to rate something!
+                  </p>
+                  <Link
+                    to="/search"
+                    className="inline-block mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    Start Rating
+                  </Link>
+                </div>
+              </section>
             </div>
 
             {/* Sidebar */}
             <div className="space-y-8">
-              <Top100Preview items={topAlbums} category="album" />
+              {/* Top 100 Preview placeholder */}
+              <section className="py-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="font-display text-2xl font-bold">Top Albums</h2>
+                  <Link
+                    to="/top100"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    View Top 100
+                  </Link>
+                </div>
+                <div className="glass-card rounded-xl p-6 text-center">
+                  <p className="text-muted-foreground text-sm">
+                    Top 100 will populate as users rate music.
+                  </p>
+                </div>
+              </section>
             </div>
           </div>
         </div>
@@ -95,9 +105,9 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>© 2024 RateTheMusic. All rights reserved.</p>
+          <p>&copy; 2024 RateTheMusic. All rights reserved.</p>
           <p className="mt-2">
-            Powered by MusicBrainz, Wikipedia & Wikipedia Commons
+            Powered by MusicBrainz, Wikipedia &amp; Wikipedia Commons
           </p>
         </div>
       </footer>

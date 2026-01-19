@@ -1,22 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search as SearchIcon, Music2, Disc3, Mic2, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { MusicCard } from "@/components/MusicCard";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import {
+  searchAll,
+  searchArtists,
+  searchAlbums,
+  searchSongs,
+  SearchResult,
+} from "@/lib/musicbrainz";
 
 type SearchType = "all" | "artist" | "album" | "song";
-
-interface SearchResult {
-  id: string;
-  type: "artist" | "album" | "song";
-  name: string;
-  imageUrl?: string;
-  rating?: number;
-  totalRatings?: number;
-  subtitle?: string;
-}
 
 const Search = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -34,41 +31,53 @@ const Search = () => {
     { value: "song" as const, label: "Songs", icon: Music2 },
   ];
 
-  useEffect(() => {
-    if (!query.trim()) {
+  const performSearch = useCallback(async (searchQuery: string, type: SearchType) => {
+    if (!searchQuery.trim()) {
       setResults([]);
       return;
     }
 
     setIsLoading(true);
-    const timer = setTimeout(() => {
-      const mockResults: SearchResult[] = [
-        { id: "1", type: "artist" as const, name: "The Beatles", rating: 9.2, totalRatings: 45000 },
-        { id: "2", type: "album" as const, name: "Abbey Road", subtitle: "The Beatles", rating: 9.5, totalRatings: 32000 },
-        { id: "3", type: "song" as const, name: "Here Comes The Sun", subtitle: "The Beatles", rating: 9.3, totalRatings: 28000 },
-        { id: "4", type: "artist" as const, name: "Queen", rating: 9.1, totalRatings: 41000 },
-        { id: "5", type: "album" as const, name: "A Night at the Opera", subtitle: "Queen", rating: 9.4, totalRatings: 29000 },
-        { id: "6", type: "song" as const, name: "Bohemian Rhapsody", subtitle: "Queen", rating: 9.8, totalRatings: 55000 },
-      ].filter((item) => 
-        item.name.toLowerCase().includes(query.toLowerCase()) ||
-        item.subtitle?.toLowerCase().includes(query.toLowerCase())
-      );
+    try {
+      let searchResults: SearchResult[];
       
-      setResults(mockResults);
+      switch (type) {
+        case "artist":
+          searchResults = await searchArtists(searchQuery, 20);
+          break;
+        case "album":
+          searchResults = await searchAlbums(searchQuery, 20);
+          break;
+        case "song":
+          searchResults = await searchSongs(searchQuery, 20);
+          break;
+        default:
+          searchResults = await searchAll(searchQuery, 8);
+      }
+      
+      setResults(searchResults);
+    } catch (error) {
+      console.error("Search error:", error);
+      setResults([]);
+    } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      performSearch(query, activeType);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [query]);
-
-  const filteredResults = activeType === "all" 
-    ? results 
-    : results.filter((r) => r.type === activeType);
+  }, [query, activeType, performSearch]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
       setSearchParams({ q: query });
+      performSearch(query, activeType);
     }
   };
 
@@ -117,13 +126,13 @@ const Search = () => {
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          ) : query && filteredResults.length === 0 ? (
+          ) : query && results.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-muted-foreground">No results found for "{query}"</p>
             </div>
-          ) : filteredResults.length > 0 ? (
+          ) : results.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredResults.map((result) => (
+              {results.map((result) => (
                 <MusicCard key={`${result.type}-${result.id}`} {...result} />
               ))}
             </div>
