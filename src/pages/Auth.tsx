@@ -1,54 +1,107 @@
-import { useState } from "react";
-import { useSearchParams, Link } from "react-router-dom";
-import { Music2, Mail, Phone, ArrowLeft, ArrowRight, Lock, User, Shield } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { Music2, Mail, ArrowLeft, ArrowRight, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VinylLoader } from "@/components/VinylLoader";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import { z } from "zod";
 
-type AuthStep = "method" | "credentials" | "username" | "verify";
-type AuthMethod = "email" | "phone";
+type AuthStep = "credentials" | "username";
+
+const emailSchema = z.string().email("Please enter a valid email address");
+const passwordSchema = z.string().min(8, "Password must be at least 8 characters");
+const usernameSchema = z
+  .string()
+  .min(3, "Username must be at least 3 characters")
+  .max(20, "Username must be at most 20 characters")
+  .regex(/^[a-z0-9_]+$/, "Username can only contain lowercase letters, numbers, and underscores");
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const isSignup = searchParams.get("mode") === "signup";
+  const { user, signUp, signIn } = useAuth();
 
-  const [step, setStep] = useState<AuthStep>(isSignup ? "method" : "credentials");
-  const [method, setMethod] = useState<AuthMethod>("email");
+  const [step, setStep] = useState<AuthStep>("credentials");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string; username?: string }>({});
 
-  const handleMethodSelect = (selectedMethod: AuthMethod) => {
-    setMethod(selectedMethod);
-    setStep("credentials");
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/");
+    }
+  }, [user, navigate]);
+
+  const validateCredentials = () => {
+    const newErrors: typeof errors = {};
+
+    const emailResult = emailSchema.safeParse(email);
+    if (!emailResult.success) {
+      newErrors.email = emailResult.error.errors[0].message;
+    }
+
+    const passwordResult = passwordSchema.safeParse(password);
+    if (!passwordResult.success) {
+      newErrors.password = passwordResult.error.errors[0].message;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleCredentialsSubmit = (e: React.FormEvent) => {
+  const validateUsername = () => {
+    const newErrors: typeof errors = {};
+
+    const usernameResult = usernameSchema.safeParse(username);
+    if (!usernameResult.success) {
+      newErrors.username = usernameResult.error.errors[0].message;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateCredentials()) return;
+
     if (isSignup) {
       setStep("username");
     } else {
-      // Login logic
       setIsLoading(true);
-      setTimeout(() => setIsLoading(false), 1500);
+      const { error } = await signIn(email, password);
+      setIsLoading(false);
+
+      if (error) {
+        toast.error(error.message || "Failed to sign in");
+      } else {
+        toast.success("Welcome back!");
+        navigate("/");
+      }
     }
   };
 
-  const handleUsernameSubmit = (e: React.FormEvent) => {
+  const handleUsernameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStep("verify");
-  };
+    if (!validateUsername()) return;
 
-  const handleVerification = (e: React.FormEvent) => {
-    e.preventDefault();
     setIsLoading(true);
-    // Verification logic
-    setTimeout(() => setIsLoading(false), 1500);
+    const { error } = await signUp(email, password, username);
+    setIsLoading(false);
+
+    if (error) {
+      toast.error(error.message || "Failed to create account");
+    } else {
+      toast.success("Account created! Welcome to RateTheMusic!");
+      navigate("/");
+    }
   };
 
   return (
@@ -57,9 +110,9 @@ const Auth = () => {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           {/* Back Button */}
-          {step !== "method" && step !== "credentials" && (
+          {step === "username" && (
             <button
-              onClick={() => setStep(step === "verify" ? "username" : step === "username" ? "credentials" : "method")}
+              onClick={() => setStep("credentials")}
               className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -79,101 +132,35 @@ const Auth = () => {
             </span>
           </Link>
 
-          {/* Step: Method Selection */}
-          {step === "method" && isSignup && (
-            <div className="space-y-6 animate-fade-in">
-              <div>
-                <h1 className="font-display text-3xl font-bold mb-2">Create Account</h1>
-                <p className="text-muted-foreground">Choose how you'd like to sign up</p>
-              </div>
-
-              <div className="space-y-3">
-                <button
-                  onClick={() => handleMethodSelect("email")}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl glass-card hover:border-primary/50 transition-colors group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                    <Mail className="w-6 h-6 text-primary" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-semibold">Continue with Email</p>
-                    <p className="text-sm text-muted-foreground">Sign up with your email address</p>
-                  </div>
-                  <ArrowRight className="w-5 h-5 ml-auto text-muted-foreground group-hover:text-primary transition-colors" />
-                </button>
-
-                <button
-                  onClick={() => handleMethodSelect("phone")}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl glass-card hover:border-primary/50 transition-colors group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                    <Phone className="w-6 h-6 text-primary" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-semibold">Continue with Phone</p>
-                    <p className="text-sm text-muted-foreground">Sign up with your phone number</p>
-                  </div>
-                  <ArrowRight className="w-5 h-5 ml-auto text-muted-foreground group-hover:text-primary transition-colors" />
-                </button>
-              </div>
-
-              <p className="text-center text-sm text-muted-foreground">
-                Already have an account?{" "}
-                <Link to="/auth" className="text-primary hover:underline">
-                  Log in
-                </Link>
-              </p>
-            </div>
-          )}
-
           {/* Step: Credentials */}
           {step === "credentials" && (
             <form onSubmit={handleCredentialsSubmit} className="space-y-6 animate-fade-in">
               <div>
                 <h1 className="font-display text-3xl font-bold mb-2">
-                  {isSignup ? "Enter your details" : "Welcome back"}
+                  {isSignup ? "Create Account" : "Welcome back"}
                 </h1>
                 <p className="text-muted-foreground">
-                  {isSignup
-                    ? `Sign up with your ${method === "email" ? "email address" : "phone number"}`
-                    : "Log in to your account"}
+                  {isSignup ? "Sign up with your email address" : "Log in to your account"}
                 </p>
               </div>
 
               <div className="space-y-4">
-                {method === "email" ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="name@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="phone"
-                        type="tel"
-                        placeholder="+1 (555) 000-0000"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
+                  {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
@@ -190,6 +177,7 @@ const Auth = () => {
                       minLength={8}
                     />
                   </div>
+                  {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
                   {isSignup && (
                     <p className="text-xs text-muted-foreground">At least 8 characters</p>
                   )}
@@ -251,58 +239,15 @@ const Auth = () => {
                     maxLength={20}
                   />
                 </div>
+                {errors.username && <p className="text-sm text-destructive">{errors.username}</p>}
                 <p className="text-xs text-muted-foreground">
                   3-20 characters, letters, numbers, and underscores only
                 </p>
               </div>
 
-              <Button type="submit" className="w-full">
-                Continue
-                <ArrowRight className="w-4 h-4 ml-2" />
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? <VinylLoader size="sm" /> : "Create Account"}
               </Button>
-            </form>
-          )}
-
-          {/* Step: Verification */}
-          {step === "verify" && (
-            <form onSubmit={handleVerification} className="space-y-6 animate-fade-in">
-              <div>
-                <h1 className="font-display text-3xl font-bold mb-2">Verify your account</h1>
-                <p className="text-muted-foreground">
-                  We sent a 6-digit code to{" "}
-                  <span className="text-foreground font-medium">
-                    {method === "email" ? email : phone}
-                  </span>
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="code">Verification Code</Label>
-                <div className="relative">
-                  <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="code"
-                    type="text"
-                    placeholder="000000"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    className="pl-10 text-center tracking-widest text-lg"
-                    required
-                    maxLength={6}
-                  />
-                </div>
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading || verificationCode.length !== 6}>
-                {isLoading ? <VinylLoader size="sm" /> : "Verify & Create Account"}
-              </Button>
-
-              <p className="text-center text-sm text-muted-foreground">
-                Didn't receive a code?{" "}
-                <button type="button" className="text-primary hover:underline">
-                  Resend
-                </button>
-              </p>
             </form>
           )}
         </div>

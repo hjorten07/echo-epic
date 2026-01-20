@@ -10,32 +10,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
-interface NavbarProps {
-  isLoggedIn?: boolean;
-  username?: string;
-  avatarUrl?: string;
-  notificationCount?: number;
-  isAdmin?: boolean;
-}
-
-export const Navbar = ({
-  isLoggedIn = false,
-  username = "User",
-  avatarUrl,
-  notificationCount = 0,
-  isAdmin = false,
-}: NavbarProps) => {
+export const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const { user, profile, signOut, loading } = useAuth();
+
+  const isLoggedIn = !!user;
+  const username = profile?.username || "User";
+  const avatarUrl = profile?.avatar_url;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/");
   };
 
   return (
@@ -94,16 +90,13 @@ export const Navbar = ({
 
           {/* Right Side */}
           <div className="flex items-center gap-2">
-            {isLoggedIn ? (
+            {loading ? (
+              <div className="w-8 h-8 rounded-full bg-secondary animate-pulse" />
+            ) : isLoggedIn ? (
               <>
                 {/* Notifications */}
                 <Button variant="ghost" size="icon" className="relative">
                   <Bell className="w-5 h-5" />
-                  {notificationCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center">
-                      {notificationCount > 9 ? "9+" : notificationCount}
-                    </span>
-                  )}
                 </Button>
 
                 {/* Profile Dropdown */}
@@ -115,7 +108,7 @@ export const Navbar = ({
                           <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-primary text-primary-foreground font-bold">
-                            {username[0].toUpperCase()}
+                            {username[0]?.toUpperCase() || "U"}
                           </div>
                         )}
                       </div>
@@ -135,19 +128,11 @@ export const Navbar = ({
                         Settings
                       </Link>
                     </DropdownMenuItem>
-                    {isAdmin && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link to="/admin" className="flex items-center gap-2 text-primary">
-                            <Shield className="w-4 h-4" />
-                            Admin Panel
-                          </Link>
-                        </DropdownMenuItem>
-                      </>
-                    )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="flex items-center gap-2 text-destructive">
+                    <DropdownMenuItem 
+                      className="flex items-center gap-2 text-destructive cursor-pointer"
+                      onClick={handleLogout}
+                    >
                       <LogOut className="w-4 h-4" />
                       Log Out
                     </DropdownMenuItem>

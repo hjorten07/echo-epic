@@ -48,7 +48,7 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar isLoggedIn username="MusicLover42" />
+      <Navbar />
       
       <main className="pt-24 pb-20">
         <div className="container mx-auto px-4 max-w-2xl">
