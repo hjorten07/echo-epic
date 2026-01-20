@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Palette, Lock, Bell, User, Eye, EyeOff, Check } from "lucide-react";
+import { ArrowLeft, Palette, Lock, Bell, User, Eye, EyeOff, Check, Camera, Loader2, Shield } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-
-type ColorTheme = "default" | "neon-purple" | "ocean-blue" | "sunset" | "mint";
+import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useAdmin";
+import { useTheme, ColorTheme } from "@/hooks/useTheme";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ThemeOption {
   id: ColorTheme;
@@ -24,25 +28,78 @@ const themes: ThemeOption[] = [
 ];
 
 const Settings = () => {
-  const [currentTheme, setCurrentTheme] = useState<ColorTheme>("default");
-  const [isPublicProfile, setIsPublicProfile] = useState(true);
+  const { user, profile, updateProfile } = useAuth();
+  const isAdmin = useIsAdmin();
+  const { theme, setTheme } = useTheme();
+  const [isPublicProfile, setIsPublicProfile] = useState(!profile?.is_private);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setIsPublicProfile(!profile.is_private);
+      setAvatarUrl(profile.avatar_url || "");
+    }
+  }, [profile]);
 
   const handleThemeChange = (themeId: ColorTheme) => {
-    setCurrentTheme(themeId);
-    
-    // Remove all theme classes
-    document.documentElement.classList.remove(
-      "theme-neon-purple",
-      "theme-ocean-blue",
-      "theme-sunset",
-      "theme-mint"
-    );
-    
-    // Add new theme class if not default
-    if (themeId !== "default") {
-      document.documentElement.classList.add(`theme-${themeId}`);
+    setTheme(themeId);
+    toast.success(`Theme changed to ${themes.find(t => t.id === themeId)?.name}`);
+  };
+
+  const handlePrivacyChange = async (isPublic: boolean) => {
+    setIsPublicProfile(isPublic);
+    const { error } = await updateProfile({ is_private: !isPublic });
+    if (error) {
+      toast.error("Failed to update privacy setting");
+      setIsPublicProfile(!isPublic);
+    } else {
+      toast.success(`Profile is now ${isPublic ? "public" : "private"}`);
+    }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be less than 2MB");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // For now, we'll use a URL-based approach
+      // In a real app, you'd upload to Supabase Storage
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const dataUrl = event.target?.result as string;
+        
+        // Note: This is a temporary solution using data URLs
+        // For production, implement proper file storage
+        const { error } = await updateProfile({ avatar_url: dataUrl });
+        
+        if (error) {
+          toast.error("Failed to update avatar");
+        } else {
+          setAvatarUrl(dataUrl);
+          toast.success("Avatar updated successfully!");
+        }
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      toast.error("Failed to upload avatar");
+      setUploading(false);
     }
   };
 
@@ -56,7 +113,7 @@ const Settings = () => {
           <div className="mb-8">
             <Link
               to="/profile"
-              className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition-colors"
+              className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition-colors story-link"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Profile
@@ -65,6 +122,61 @@ const Settings = () => {
           </div>
 
           <div className="space-y-8">
+            {/* Admin Panel Button */}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="flex items-center justify-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 transition-colors"
+              >
+                <Shield className="w-5 h-5 text-destructive" />
+                <span className="font-medium text-destructive">Admin Panel</span>
+              </Link>
+            )}
+
+            {/* Profile Picture */}
+            <section className="glass-card rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Camera className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="font-display text-xl font-bold">Profile Picture</h2>
+                  <p className="text-sm text-muted-foreground">Update your avatar</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6">
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full bg-secondary overflow-hidden">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-primary text-primary-foreground text-2xl font-bold">
+                        {profile?.username?.[0]?.toUpperCase() || "U"}
+                      </div>
+                    )}
+                  </div>
+                  {uploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-full">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    disabled={uploading}
+                    className="max-w-xs"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Recommended: Square image, max 2MB
+                  </p>
+                </div>
+              </div>
+            </section>
+
             {/* Color Scheme */}
             <section className="glass-card rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-6">
@@ -78,25 +190,25 @@ const Settings = () => {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {themes.map((theme) => (
+                {themes.map((t) => (
                   <button
-                    key={theme.id}
-                    onClick={() => handleThemeChange(theme.id)}
+                    key={t.id}
+                    onClick={() => handleThemeChange(t.id)}
                     className={cn(
                       "relative p-4 rounded-xl border-2 transition-all",
-                      currentTheme === theme.id
+                      theme === t.id
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-primary/50"
                     )}
                   >
-                    {currentTheme === theme.id && (
+                    {theme === t.id && (
                       <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
                         <Check className="w-3 h-3 text-primary-foreground" />
                       </div>
                     )}
                     
                     <div className="flex gap-1 mb-3">
-                      {theme.colors.map((color, i) => (
+                      {t.colors.map((color, i) => (
                         <div
                           key={i}
                           className="w-6 h-6 rounded-full"
@@ -105,7 +217,7 @@ const Settings = () => {
                       ))}
                     </div>
                     
-                    <p className="text-sm font-medium">{theme.name}</p>
+                    <p className="text-sm font-medium">{t.name}</p>
                   </button>
                 ))}
               </div>
@@ -145,7 +257,7 @@ const Settings = () => {
                   <Switch
                     id="public-profile"
                     checked={isPublicProfile}
-                    onCheckedChange={setIsPublicProfile}
+                    onCheckedChange={handlePrivacyChange}
                   />
                 </div>
               </div>

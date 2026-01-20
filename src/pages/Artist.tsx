@@ -1,9 +1,19 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Disc3, Calendar, MapPin, ExternalLink, Loader2 } from "lucide-react";
+import { Disc3, Calendar, MapPin, ExternalLink, Loader2, ArrowUpDown, Trophy } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-import { StarRating } from "@/components/StarRating";
 import { VinylLoader } from "@/components/VinylLoader";
+import { ItemRatingSection } from "@/components/ItemRatingSection";
+import { CommentSection } from "@/components/CommentSection";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import {
   getArtist,
   getArtistReleaseGroups,
@@ -13,6 +23,7 @@ import {
   MusicBrainzArtist,
   MusicBrainzReleaseGroup,
 } from "@/lib/musicbrainz";
+import { useTopRatings } from "@/hooks/useRatings";
 
 interface AlbumWithCover extends MusicBrainzReleaseGroup {
   coverUrl?: string;
@@ -26,6 +37,12 @@ const Artist = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingAlbums, setLoadingAlbums] = useState(true);
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [topFilter, setTopFilter] = useState<"songs" | "albums">("songs");
+
+  // Fetch top rated items for this artist
+  const { data: topSongs } = useTopRatings("song", 10);
+  const { data: topAlbums } = useTopRatings("album", 10);
 
   useEffect(() => {
     if (!id) return;
@@ -52,7 +69,7 @@ const Artist = () => {
       setLoadingAlbums(true);
       const releaseGroups = await getArtistReleaseGroups(id);
       
-      // Sort by date
+      // Sort by date (newest first by default)
       const sorted = releaseGroups.sort((a, b) => {
         const dateA = a["first-release-date"] || "";
         const dateB = b["first-release-date"] || "";
@@ -76,6 +93,14 @@ const Artist = () => {
     fetchArtist();
     fetchAlbums();
   }, [id]);
+
+  const sortedAlbums = [...albums].sort((a, b) => {
+    const dateA = a["first-release-date"] || "";
+    const dateB = b["first-release-date"] || "";
+    return sortOrder === "newest" 
+      ? dateB.localeCompare(dateA) 
+      : dateA.localeCompare(dateB);
+  });
 
   if (loading) {
     return (
@@ -116,6 +141,7 @@ const Artist = () => {
                     src={imageUrl}
                     alt={artist.name}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-6xl font-display font-bold text-muted-foreground/30">
@@ -157,12 +183,14 @@ const Artist = () => {
                 )}
               </div>
 
-              {/* Rating Section - No fake ratings */}
+              {/* Rating Section */}
               <div className="mb-6">
-                <StarRating size="lg" showValue />
-                <p className="text-sm text-muted-foreground mt-2">
-                  Be the first to rate this artist!
-                </p>
+                <ItemRatingSection
+                  itemType="artist"
+                  itemId={id!}
+                  itemName={artist.name}
+                  itemImage={imageUrl || undefined}
+                />
               </div>
 
               {/* Tags */}
@@ -202,19 +230,109 @@ const Artist = () => {
             </section>
           )}
 
+          {/* Top 10 Section */}
+          <section className="mb-12">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Trophy className="w-6 h-6 text-primary" />
+                <h2 className="font-display text-2xl font-bold">Top 10</h2>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant={topFilter === "songs" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setTopFilter("songs")}
+                  className={topFilter === "songs" ? "bg-primary text-primary-foreground" : ""}
+                >
+                  Songs
+                </Button>
+                <Button
+                  variant={topFilter === "albums" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setTopFilter("albums")}
+                  className={topFilter === "albums" ? "bg-primary text-primary-foreground" : ""}
+                >
+                  Albums
+                </Button>
+              </div>
+            </div>
+
+            <div className="glass-card rounded-xl overflow-hidden">
+              {(topFilter === "songs" ? topSongs : topAlbums)?.length ? (
+                <div className="divide-y divide-border">
+                  {(topFilter === "songs" ? topSongs : topAlbums)?.slice(0, 10).map((item, index) => (
+                    <Link
+                      key={item.item_id}
+                      to={`/${item.item_type}/${item.item_id}`}
+                      className="flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors"
+                    >
+                      <span className={cn(
+                        "w-8 text-center font-bold",
+                        index < 3 ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        {index + 1}
+                      </span>
+                      <div className="w-12 h-12 rounded-lg bg-secondary overflow-hidden shrink-0">
+                        {item.item_image ? (
+                          <img
+                            src={item.item_image}
+                            alt={item.item_name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Disc3 className="w-6 h-6 text-muted-foreground/30" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.item_name}</p>
+                        {item.item_subtitle && (
+                          <p className="text-sm text-muted-foreground truncate">
+                            {item.item_subtitle}
+                          </p>
+                        )}
+                      </div>
+                      <span className="font-semibold text-primary">
+                        {Number(item.avg_rating).toFixed(1)}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground">
+                  No ratings yet. Be the first to rate!
+                </div>
+              )}
+            </div>
+          </section>
+
           {/* Discography */}
-          <section>
-            <h2 className="font-display text-2xl font-bold mb-6">Discography</h2>
+          <section className="mb-12">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-display text-2xl font-bold">Discography</h2>
+              <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as "newest" | "oldest")}>
+                <SelectTrigger className="w-36">
+                  <ArrowUpDown className="w-4 h-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             {loadingAlbums ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
-            ) : albums.length === 0 ? (
+            ) : sortedAlbums.length === 0 ? (
               <p className="text-muted-foreground">No albums found.</p>
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {albums.map((album) => (
+                {sortedAlbums.map((album) => (
                   <Link
                     key={album.id}
                     to={`/album/${album.id}`}
@@ -226,6 +344,7 @@ const Artist = () => {
                           src={album.coverUrl}
                           alt={album.title}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          loading="lazy"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -247,6 +366,9 @@ const Artist = () => {
               </div>
             )}
           </section>
+
+          {/* Comments Section */}
+          <CommentSection itemType="artist" itemId={id!} />
         </div>
       </main>
     </div>

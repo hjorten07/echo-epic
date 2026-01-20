@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Search, Bell, User, Settings, LogOut, Menu, X, Music2, Home, Users, ChevronDown, Shield } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Search, User, Settings, LogOut, Menu, X, Music2, Home, Users, ChevronDown, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,11 +11,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
+import { NotificationDropdown } from "./NotificationDropdown";
+import { cn } from "@/lib/utils";
 
 export const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, profile, signOut, loading } = useAuth();
 
   const isLoggedIn = !!user;
@@ -33,6 +36,8 @@ export const Navbar = () => {
     await signOut();
     navigate("/");
   };
+
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass-card border-b border-border/50">
@@ -54,20 +59,30 @@ export const Navbar = () => {
           <div className="hidden md:flex items-center gap-6">
             <Link
               to="/"
-              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+              className={cn(
+                "flex items-center gap-2 transition-colors story-link",
+                isActive("/") ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              )}
             >
               <Home className="w-4 h-4" />
               <span>Home</span>
             </Link>
             <Link
               to="/top100"
-              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+              className={cn(
+                "flex items-center gap-2 transition-colors story-link",
+                isActive("/top100") ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              )}
             >
+              <TrendingUp className="w-4 h-4" />
               <span>Top 100</span>
             </Link>
             <Link
               to="/social"
-              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+              className={cn(
+                "flex items-center gap-2 transition-colors story-link",
+                isActive("/social") ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              )}
             >
               <Users className="w-4 h-4" />
               <span>Social</span>
@@ -95,10 +110,7 @@ export const Navbar = () => {
             ) : isLoggedIn ? (
               <>
                 {/* Notifications */}
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="w-5 h-5" />
-                </Button>
-
+                <NotificationDropdown />
                 {/* Profile Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
