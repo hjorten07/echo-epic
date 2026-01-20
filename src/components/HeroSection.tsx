@@ -1,13 +1,42 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Music2, Star, Users, ArrowRight } from "lucide-react";
+import { Music2, Star, Users, ArrowRight, Search } from "lucide-react";
 import { VinylLoader } from "./VinylLoader";
+import { useAuth } from "@/hooks/useAuth";
+import { useTotalStats } from "@/hooks/useAdmin";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
-interface HeroSectionProps {
-  isLoggedIn?: boolean;
-}
+export const HeroSection = () => {
+  const { user } = useAuth();
 
-export const HeroSection = ({ isLoggedIn = false }: HeroSectionProps) => {
+  // Fetch real stats
+  const { data: ratingsCount } = useQuery({
+    queryKey: ["total-ratings-count"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("ratings")
+        .select("*", { count: "exact", head: true });
+      return count || 0;
+    },
+  });
+
+  const { data: usersCount } = useQuery({
+    queryKey: ["total-users-count"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true });
+      return count || 0;
+    },
+  });
+
+  const formatCount = (count: number) => {
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
+    return count.toString();
+  };
+
   return (
     <section className="relative min-h-[80vh] flex items-center overflow-hidden">
       {/* Background Effects */}
@@ -42,19 +71,27 @@ export const HeroSection = ({ isLoggedIn = false }: HeroSectionProps) => {
 
           {/* Subtitle */}
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in">
-            Join thousands of music lovers rating artists, albums, and songs. 
+            Join music lovers rating artists, albums, and songs. 
             Build your profile, share your taste, and find your next obsession.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 animate-fade-in">
-            {isLoggedIn ? (
-              <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 px-8" asChild>
-                <Link to="/profile">
-                  View Your Profile
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Link>
-              </Button>
+            {user ? (
+              <>
+                <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 story-link" asChild>
+                  <Link to="/profile">
+                    My Profile
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Link>
+                </Button>
+                <Button size="lg" variant="outline" className="px-8 story-link" asChild>
+                  <Link to="/search">
+                    <Search className="w-4 h-4 mr-2" />
+                    Explore Music
+                  </Link>
+                </Button>
+              </>
             ) : (
               <>
                 <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 px-8" asChild>
@@ -63,8 +100,9 @@ export const HeroSection = ({ isLoggedIn = false }: HeroSectionProps) => {
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" className="px-8" asChild>
+                <Button size="lg" variant="outline" className="px-8 story-link" asChild>
                   <Link to="/search">
+                    <Search className="w-4 h-4 mr-2" />
                     Explore Music
                   </Link>
                 </Button>
@@ -77,21 +115,25 @@ export const HeroSection = ({ isLoggedIn = false }: HeroSectionProps) => {
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Star className="w-5 h-5 text-primary" />
-                <span className="font-display text-2xl md:text-3xl font-bold">1M+</span>
+                <span className="font-display text-2xl md:text-3xl font-bold">
+                  {formatCount(ratingsCount || 0)}
+                </span>
               </div>
               <span className="text-sm text-muted-foreground">Ratings</span>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Users className="w-5 h-5 text-primary" />
-                <span className="font-display text-2xl md:text-3xl font-bold">50K+</span>
+                <span className="font-display text-2xl md:text-3xl font-bold">
+                  {formatCount(usersCount || 0)}
+                </span>
               </div>
               <span className="text-sm text-muted-foreground">Users</span>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Music2 className="w-5 h-5 text-primary" />
-                <span className="font-display text-2xl md:text-3xl font-bold">5M+</span>
+                <span className="font-display text-2xl md:text-3xl font-bold">30M+</span>
               </div>
               <span className="text-sm text-muted-foreground">Tracks</span>
             </div>

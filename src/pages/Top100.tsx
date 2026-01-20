@@ -10,14 +10,15 @@ type Category = "song" | "album" | "artist";
 
 const Top100 = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialCategory = (searchParams.get("type") as Category) || "album";
+  const initialCategory = (searchParams.get("type") as Category) || "song";
   const [category, setCategory] = useState<Category>(initialCategory);
 
   const { data: topItems, isLoading } = useTopRatings(category, 100);
 
+  // Order: Albums, Songs, Artists (Songs in middle)
   const categories = [
-    { value: "song" as const, label: "Songs", icon: Music2 },
     { value: "album" as const, label: "Albums", icon: Disc3 },
+    { value: "song" as const, label: "Songs", icon: Music2 },
     { value: "artist" as const, label: "Artists", icon: Mic2 },
   ];
 

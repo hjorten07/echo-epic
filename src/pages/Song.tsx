@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Clock, Disc3 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-import { StarRating } from "@/components/StarRating";
 import { VinylLoader } from "@/components/VinylLoader";
+import { ItemRatingSection } from "@/components/ItemRatingSection";
+import { CommentSection } from "@/components/CommentSection";
 import {
   getRecording,
   getCoverArt,
@@ -81,6 +82,7 @@ const Song = () => {
                     src={coverUrl}
                     alt={song.title}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
@@ -142,17 +144,20 @@ const Song = () => {
 
               {/* Rating Section */}
               <div className="mb-6">
-                <StarRating size="lg" showValue />
-                <p className="text-sm text-muted-foreground mt-2">
-                  Be the first to rate this song!
-                </p>
+                <ItemRatingSection
+                  itemType="song"
+                  itemId={id!}
+                  itemName={song.title}
+                  itemImage={coverUrl || undefined}
+                  itemSubtitle={artistName}
+                />
               </div>
             </div>
           </div>
 
           {/* Other Releases */}
           {song.releases && song.releases.length > 1 && (
-            <section>
+            <section className="mb-12">
               <h2 className="font-display text-2xl font-bold mb-6">
                 Also appears on
               </h2>
@@ -181,6 +186,9 @@ const Song = () => {
               </div>
             </section>
           )}
+
+          {/* Comments Section */}
+          <CommentSection itemType="song" itemId={id!} />
         </div>
       </main>
     </div>

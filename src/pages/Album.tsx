@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Clock, Calendar, ExternalLink, Loader2, Music2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-import { StarRating } from "@/components/StarRating";
 import { VinylLoader } from "@/components/VinylLoader";
+import { ItemRatingSection } from "@/components/ItemRatingSection";
+import { CommentSection } from "@/components/CommentSection";
 import {
   getReleaseGroup,
   getReleasesForGroup,
@@ -11,7 +12,6 @@ import {
   getWikipediaSummary,
   formatDuration,
   MusicBrainzReleaseGroup,
-  MusicBrainzRelease,
 } from "@/lib/musicbrainz";
 
 interface Track {
@@ -131,6 +131,7 @@ const Album = () => {
                     src={coverUrl}
                     alt={album.title}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-6xl font-display font-bold text-muted-foreground/30">
@@ -188,10 +189,13 @@ const Album = () => {
 
               {/* Rating Section */}
               <div className="mb-6">
-                <StarRating size="lg" showValue />
-                <p className="text-sm text-muted-foreground mt-2">
-                  Be the first to rate this album!
-                </p>
+                <ItemRatingSection
+                  itemType="album"
+                  itemId={id!}
+                  itemName={album.title}
+                  itemImage={coverUrl || undefined}
+                  itemSubtitle={artistName}
+                />
               </div>
             </div>
           </div>
@@ -218,7 +222,7 @@ const Album = () => {
           )}
 
           {/* Track List */}
-          <section>
+          <section className="mb-12">
             <h2 className="font-display text-2xl font-bold mb-6">Tracklist</h2>
 
             {loadingTracks ? (
@@ -253,6 +257,9 @@ const Album = () => {
               </div>
             )}
           </section>
+
+          {/* Comments Section */}
+          <CommentSection itemType="album" itemId={id!} />
         </div>
       </main>
     </div>
