@@ -1,52 +1,19 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { TrendingUp, Music2, Disc3, Mic2 } from "lucide-react";
+import { useSearchParams, Link } from "react-router-dom";
+import { TrendingUp, Music2, Disc3, Mic2, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { MusicCard } from "@/components/MusicCard";
 import { cn } from "@/lib/utils";
+import { useTopRatings } from "@/hooks/useRatings";
 
 type Category = "song" | "album" | "artist";
-
-interface TopItem {
-  id: string;
-  type: Category;
-  name: string;
-  imageUrl?: string;
-  rating: number;
-  totalRatings: number;
-  subtitle?: string;
-}
-
-const mockData: Record<Category, TopItem[]> = {
-  song: Array.from({ length: 20 }, (_, i) => ({
-    id: `song-${i + 1}`,
-    type: "song" as const,
-    name: ["Bohemian Rhapsody", "Stairway to Heaven", "Hotel California", "Imagine", "Smells Like Teen Spirit", "Hey Jude", "Like a Rolling Stone", "Purple Haze", "What's Going On", "Respect"][i % 10],
-    subtitle: ["Queen", "Led Zeppelin", "Eagles", "John Lennon", "Nirvana", "The Beatles", "Bob Dylan", "Jimi Hendrix", "Marvin Gaye", "Aretha Franklin"][i % 10],
-    rating: 9.8 - (i * 0.05),
-    totalRatings: 50000 - (i * 1000),
-  })),
-  album: Array.from({ length: 20 }, (_, i) => ({
-    id: `album-${i + 1}`,
-    type: "album" as const,
-    name: ["To Pimp a Butterfly", "OK Computer", "Abbey Road", "The Dark Side of the Moon", "Blonde", "Nevermind", "Thriller", "Purple Rain", "Kind of Blue", "Rumours"][i % 10],
-    subtitle: ["Kendrick Lamar", "Radiohead", "The Beatles", "Pink Floyd", "Frank Ocean", "Nirvana", "Michael Jackson", "Prince", "Miles Davis", "Fleetwood Mac"][i % 10],
-    rating: 9.5 - (i * 0.04),
-    totalRatings: 45000 - (i * 900),
-  })),
-  artist: Array.from({ length: 20 }, (_, i) => ({
-    id: `artist-${i + 1}`,
-    type: "artist" as const,
-    name: ["The Beatles", "Pink Floyd", "Led Zeppelin", "Queen", "Kendrick Lamar", "Radiohead", "David Bowie", "Prince", "Stevie Wonder", "Miles Davis"][i % 10],
-    rating: 9.4 - (i * 0.03),
-    totalRatings: 60000 - (i * 1200),
-  })),
-};
 
 const Top100 = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = (searchParams.get("type") as Category) || "album";
   const [category, setCategory] = useState<Category>(initialCategory);
+
+  const { data: topItems, isLoading } = useTopRatings(category, 100);
 
   const categories = [
     { value: "song" as const, label: "Songs", icon: Music2 },
@@ -97,33 +64,54 @@ const Top100 = () => {
             ))}
           </div>
 
-          {/* Grid */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {mockData[category].map((item, index) => (
-              <div key={item.id} className="relative">
-                {/* Rank Badge */}
-                <div className={cn(
-                  "absolute -top-3 -left-3 z-10 w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-sm shadow-lg",
-                  index === 0 && "bg-gradient-to-br from-yellow-400 to-amber-600 text-white",
-                  index === 1 && "bg-gradient-to-br from-slate-300 to-slate-500 text-white",
-                  index === 2 && "bg-gradient-to-br from-amber-600 to-amber-800 text-white",
-                  index > 2 && "bg-secondary text-foreground"
-                )}>
-                  {index + 1}
-                </div>
-                
-                <MusicCard
-                  id={item.id}
-                  type={item.type}
-                  name={item.name}
-                  imageUrl={item.imageUrl}
-                  rating={item.rating}
-                  totalRatings={item.totalRatings}
-                  subtitle={item.subtitle}
-                />
+          {/* Content */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : !topItems || topItems.length === 0 ? (
+            <div className="text-center py-20">
+              <div className="glass-card rounded-xl p-8 max-w-md mx-auto">
+                <h2 className="font-display text-xl font-semibold mb-2">No ratings yet</h2>
+                <p className="text-muted-foreground mb-4">
+                  Be the first to rate {category}s and help build the Top 100!
+                </p>
+                <Link
+                  to="/search"
+                  className="inline-block px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  Start Rating
+                </Link>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {topItems.map((item, index) => (
+                <div key={`${item.item_type}-${item.item_id}`} className="relative">
+                  {/* Rank Badge */}
+                  <div className={cn(
+                    "absolute -top-3 -left-3 z-10 w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-sm shadow-lg",
+                    index === 0 && "bg-gradient-to-br from-yellow-400 to-amber-600 text-white",
+                    index === 1 && "bg-gradient-to-br from-slate-300 to-slate-500 text-white",
+                    index === 2 && "bg-gradient-to-br from-amber-600 to-amber-800 text-white",
+                    index > 2 && "bg-secondary text-foreground"
+                  )}>
+                    {index + 1}
+                  </div>
+                  
+                  <MusicCard
+                    id={item.item_id}
+                    type={item.item_type as "artist" | "album" | "song"}
+                    name={item.item_name}
+                    imageUrl={item.item_image || undefined}
+                    rating={Number(item.avg_rating)}
+                    totalRatings={Number(item.total_ratings)}
+                    subtitle={item.item_subtitle || undefined}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>
