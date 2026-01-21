@@ -47,9 +47,11 @@ export const SoundWaveAnimation = ({ className = "" }: SoundWaveAnimationProps) 
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Get primary color from CSS
+      // Get primary color from CSS and convert to comma-separated format
       const computedStyle = getComputedStyle(document.documentElement);
       const primaryHsl = computedStyle.getPropertyValue("--primary").trim();
+      // Convert "25 100% 55%" to "25, 100%, 55%" for hsla()
+      const primaryHslCommas = primaryHsl.replace(/\s+/g, ", ");
       
       const bars = 40;
       const barWidth = canvas.width / bars;
@@ -75,9 +77,9 @@ export const SoundWaveAnimation = ({ className = "" }: SoundWaveAnimationProps) 
         
         // Draw bar with gradient
         const gradient = ctx.createLinearGradient(x, canvas.height / 2 - barHeight, x, canvas.height / 2 + barHeight);
-        gradient.addColorStop(0, `hsla(${primaryHsl}, ${0.1 + influence * 0.4})`);
-        gradient.addColorStop(0.5, `hsla(${primaryHsl}, ${0.2 + influence * 0.5})`);
-        gradient.addColorStop(1, `hsla(${primaryHsl}, ${0.1 + influence * 0.4})`);
+        gradient.addColorStop(0, `hsla(${primaryHslCommas}, ${0.1 + influence * 0.4})`);
+        gradient.addColorStop(0.5, `hsla(${primaryHslCommas}, ${0.2 + influence * 0.5})`);
+        gradient.addColorStop(1, `hsla(${primaryHslCommas}, ${0.1 + influence * 0.4})`);
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
