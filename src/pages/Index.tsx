@@ -37,7 +37,7 @@ const Index = () => {
         
         <div className="container mx-auto px-4 pb-20">
           {/* Sound Wave Animation */}
-          <div className="relative mb-4">
+          <div className="relative mb-8 py-4">
             <SoundWaveAnimation />
           </div>
           

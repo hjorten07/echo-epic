@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Music, Bell, Check, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -18,14 +18,32 @@ import {
 } from "@/hooks/useNotifications";
 
 export const NotificationDropdown = () => {
+  const navigate = useNavigate();
   const { data: notifications, isLoading } = useNotifications();
   const { data: unreadCount = 0 } = useUnreadNotificationCount();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
 
-  const handleNotificationClick = (notificationId: string, isRead: boolean) => {
-    if (!isRead) {
-      markRead.mutate(notificationId);
+  const handleNotificationClick = (notification: {
+    id: string;
+    read: boolean;
+    type: string;
+    related_item_id: string | null;
+    related_item_type: string | null;
+  }) => {
+    if (!notification.read) {
+      markRead.mutate(notification.id);
+    }
+    
+    // Navigate based on notification type
+    if (notification.type === "follow" && notification.related_item_id) {
+      // For follow notifications, related_item_id is the follower's user id
+      navigate(`/user/${notification.related_item_id}`);
+    } else if (notification.type === "follow_request" && notification.related_item_id) {
+      navigate(`/user/${notification.related_item_id}`);
+    } else if (notification.related_item_type && notification.related_item_id) {
+      // For comments/ratings on items
+      navigate(`/${notification.related_item_type}/${notification.related_item_id}`);
     }
   };
 
@@ -70,7 +88,7 @@ export const NotificationDropdown = () => {
                 "flex flex-col items-start gap-1 p-3 cursor-pointer",
                 !notification.read && "bg-primary/5"
               )}
-              onClick={() => handleNotificationClick(notification.id, notification.read)}
+              onClick={() => handleNotificationClick(notification)}
             >
               <div className="flex items-start gap-2 w-full">
                 {!notification.read && (

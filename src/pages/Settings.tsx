@@ -35,6 +35,185 @@ const extraThemes: ThemeOption[] = [
   { id: "amber", name: "Amber", colors: ["#1a1408", "#f59e0b", "#fbbf24"] },
 ];
 
+const AccountSection = () => {
+  const { user, profile, updateProfile } = useAuth();
+  const [username, setUsername] = useState(profile?.username || "");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+
+  useEffect(() => {
+    if (profile?.username) {
+      setUsername(profile.username);
+    }
+  }, [profile]);
+
+  const handleUsernameChange = async () => {
+    if (!username.trim() || username === profile?.username) return;
+    
+    if (username.length < 3) {
+      toast.error("Username must be at least 3 characters");
+      return;
+    }
+
+    if (username.length > 30) {
+      toast.error("Username must be less than 30 characters");
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      toast.error("Username can only contain letters, numbers, and underscores");
+      return;
+    }
+
+    setSavingUsername(true);
+    const { error } = await updateProfile({ username: username.trim() });
+    
+    if (error) {
+      if (error.message?.includes("duplicate")) {
+        toast.error("Username already taken");
+      } else {
+        toast.error("Failed to update username");
+      }
+    } else {
+      toast.success("Username updated!");
+    }
+    setSavingUsername(false);
+  };
+
+  const handlePasswordChange = async () => {
+    if (!newPassword || !confirmPassword) {
+      toast.error("Please fill in all password fields");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords don't match");
+      return;
+    }
+
+    setSavingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    
+    if (error) {
+      toast.error(error.message || "Failed to update password");
+    } else {
+      toast.success("Password updated successfully!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowPasswordForm(false);
+    }
+    setSavingPassword(false);
+  };
+
+  return (
+    <section className="glass-card rounded-2xl p-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <User className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="font-display text-xl font-bold">Account</h2>
+          <p className="text-sm text-muted-foreground">Manage your account settings</p>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {/* Username */}
+        <div className="space-y-2">
+          <Label htmlFor="username">Username</Label>
+          <div className="flex gap-2">
+            <Input
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Your username"
+              className="flex-1"
+            />
+            <Button 
+              onClick={handleUsernameChange}
+              disabled={savingUsername || username === profile?.username || !username.trim()}
+            >
+              {savingUsername ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Letters, numbers, and underscores only. 3-30 characters.
+          </p>
+        </div>
+
+        {/* Password */}
+        <div className="space-y-3">
+          {!showPasswordForm ? (
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => setShowPasswordForm(true)}
+            >
+              Change Password
+            </Button>
+          ) : (
+            <div className="space-y-3 p-4 rounded-xl bg-secondary/50">
+              <div className="flex items-center justify-between">
+                <Label className="font-medium">Change Password</Label>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setShowPasswordForm(false);
+                    setCurrentPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="New password"
+              />
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+              />
+              <Button 
+                onClick={handlePasswordChange}
+                disabled={savingPassword || !newPassword || !confirmPassword}
+                className="w-full"
+              >
+                {savingPassword ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : null}
+                Update Password
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Email info */}
+        <div className="p-4 rounded-xl bg-secondary/50">
+          <Label className="font-medium">Email</Label>
+          <p className="text-sm text-muted-foreground mt-1">{user?.email}</p>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 const Settings = () => {
   const { user, profile, updateProfile } = useAuth();
   const isAdmin = useIsAdmin();
@@ -377,29 +556,7 @@ const Settings = () => {
             </section>
 
             {/* Account */}
-            <section className="glass-card rounded-2xl p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <User className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h2 className="font-display text-xl font-bold">Account</h2>
-                  <p className="text-sm text-muted-foreground">Manage your account settings</p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <Button variant="outline" className="w-full justify-start">
-                  Change Password
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  Update Email
-                </Button>
-                <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive">
-                  Delete Account
-                </Button>
-              </div>
-            </section>
+            <AccountSection />
           </div>
         </div>
       </main>
