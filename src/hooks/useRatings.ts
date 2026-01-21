@@ -68,16 +68,21 @@ export const useTopRatings = (itemType: "artist" | "album" | "song", limit = 100
   return useQuery({
     queryKey: ["top-ratings", itemType, limit],
     queryFn: async () => {
+      // Order by total_ratings first (weight), then by avg_rating
       const { data, error } = await supabase
         .from("item_ratings")
         .select("*")
         .eq("item_type", itemType)
+        .gte("total_ratings", 1) // Only show items with at least 1 rating
         .order("total_ratings", { ascending: false })
         .order("avg_rating", { ascending: false })
         .limit(limit);
 
-      if (error) throw error;
-      return data as ItemRating[];
+      if (error) {
+        console.error("Error fetching top ratings:", error);
+        throw error;
+      }
+      return (data || []) as ItemRating[];
     },
   });
 };

@@ -17,8 +17,11 @@ export const SoundWaveAnimation = ({ className = "" }: SoundWaveAnimationProps) 
     if (!ctx) return;
 
     const resizeCanvas = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
+      const parent = canvas.parentElement;
+      if (parent) {
+        canvas.width = parent.offsetWidth;
+        canvas.height = 120; // Fixed height for the wave
+      }
     };
 
     resizeCanvas();
@@ -47,49 +50,66 @@ export const SoundWaveAnimation = ({ className = "" }: SoundWaveAnimationProps) 
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Get primary color from CSS and convert to comma-separated format
+      // Get primary color from CSS variable - parse HSL values properly
       const computedStyle = getComputedStyle(document.documentElement);
       const primaryHsl = computedStyle.getPropertyValue("--primary").trim();
-      // Convert "25 100% 55%" to "25, 100%, 55%" for hsla()
-      const primaryHslCommas = primaryHsl.replace(/\s+/g, ", ");
       
-      const bars = 40;
+      // The value is like "25 100% 55%" - we need to parse it
+      const hslParts = primaryHsl.split(/\s+/);
+      const h = hslParts[0] || "25";
+      const s = hslParts[1] || "100%";
+      const l = hslParts[2] || "55%";
+      
+      const bars = 50;
       const barWidth = canvas.width / bars;
+      const centerY = canvas.height / 2;
 
       for (let i = 0; i < bars; i++) {
         const x = i * barWidth + barWidth / 2;
         
-        // Calculate distance from mouse
+        // Calculate distance from mouse for interactive effect
         let influence = 0;
         if (mousePos.current.active) {
           const dx = x - mousePos.current.x;
-          const dy = canvas.height / 2 - mousePos.current.y;
+          const dy = centerY - mousePos.current.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
-          influence = Math.max(0, 1 - distance / 200);
+          influence = Math.max(0, 1 - distance / 150);
         }
 
-        // Wave amplitude based on position and mouse influence
-        const baseAmplitude = 10 + Math.sin(time * 0.02 + i * 0.3) * 10;
-        const mouseAmplitude = influence * 40;
-        const amplitude = baseAmplitude + mouseAmplitude;
-
-        const barHeight = amplitude + Math.sin(time * 0.05 + i * 0.5) * 15;
+        // Create varied wave pattern - different frequencies for different bars
+        const waveOffset = i * 0.15;
+        const baseAmplitude = 8 + Math.sin(time * 0.03 + waveOffset) * 8;
+        const secondaryWave = Math.sin(time * 0.05 + i * 0.2) * 6;
+        const tertiaryWave = Math.sin(time * 0.02 + i * 0.4) * 4;
         
-        // Draw bar with gradient
-        const gradient = ctx.createLinearGradient(x, canvas.height / 2 - barHeight, x, canvas.height / 2 + barHeight);
-        gradient.addColorStop(0, `hsla(${primaryHslCommas}, ${0.1 + influence * 0.4})`);
-        gradient.addColorStop(0.5, `hsla(${primaryHslCommas}, ${0.2 + influence * 0.5})`);
-        gradient.addColorStop(1, `hsla(${primaryHslCommas}, ${0.1 + influence * 0.4})`);
-
-        ctx.fillStyle = gradient;
+        // Mouse influence adds extra height
+        const mouseAmplitude = influence * 35;
+        
+        const barHeight = Math.max(4, baseAmplitude + secondaryWave + tertiaryWave + mouseAmplitude);
+        
+        // Calculate opacity based on position and mouse
+        const baseOpacity = 0.15 + Math.sin(time * 0.02 + i * 0.1) * 0.1;
+        const opacity = baseOpacity + influence * 0.5;
+        
+        // Draw bar with rounded caps (like the reference image)
+        ctx.fillStyle = `hsla(${h}, ${s}, ${l}, ${opacity})`;
         ctx.beginPath();
-        ctx.roundRect(
-          x - barWidth * 0.3,
-          canvas.height / 2 - barHeight,
-          barWidth * 0.6,
-          barHeight * 2,
-          3
-        );
+        
+        const barWidthActual = barWidth * 0.4;
+        const radius = barWidthActual / 2;
+        
+        // Draw rounded rectangle (pill shape like the reference)
+        const left = x - barWidthActual / 2;
+        const top = centerY - barHeight;
+        const bottom = centerY + barHeight;
+        const height = barHeight * 2;
+        
+        if (height > radius * 2) {
+          ctx.roundRect(left, top, barWidthActual, height, radius);
+        } else {
+          // For very small bars, just draw a circle
+          ctx.arc(x, centerY, radius, 0, Math.PI * 2);
+        }
         ctx.fill();
       }
 
@@ -112,8 +132,8 @@ export const SoundWaveAnimation = ({ className = "" }: SoundWaveAnimationProps) 
   return (
     <canvas
       ref={canvasRef}
-      className={`absolute inset-0 pointer-events-auto ${className}`}
-      style={{ opacity: 0.3 }}
+      className={`w-full h-[120px] cursor-crosshair ${className}`}
+      style={{ opacity: 0.8 }}
     />
   );
 };
