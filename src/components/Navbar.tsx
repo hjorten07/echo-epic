@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, User, Settings, LogOut, Menu, X, Music2, Home, Users, ChevronDown, TrendingUp } from "lucide-react";
+import { Search, User, Settings, LogOut, Menu, X, Music2, Home, Users, ChevronDown, TrendingUp, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { MessagesDropdown } from "./MessagesDropdown";
 import { cn } from "@/lib/utils";
 
 export const Navbar = () => {
@@ -87,6 +88,16 @@ export const Navbar = () => {
               <Users className="w-4 h-4" />
               <span>Social</span>
             </Link>
+            <Link
+              to="/games"
+              className={cn(
+                "flex items-center gap-2 transition-colors story-link",
+                isActive("/games") ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Gamepad2 className="w-4 h-4" />
+              <span>Games</span>
+            </Link>
           </div>
 
           {/* Search Bar */}
@@ -109,6 +120,8 @@ export const Navbar = () => {
               <div className="w-8 h-8 rounded-full bg-secondary animate-pulse" />
             ) : isLoggedIn ? (
               <>
+                {/* Messages */}
+                <MessagesDropdown />
                 {/* Notifications */}
                 <NotificationDropdown />
                 {/* Profile Dropdown */}

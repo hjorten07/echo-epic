@@ -16,6 +16,7 @@ import Artist from "./pages/Artist";
 import Album from "./pages/Album";
 import Song from "./pages/Song";
 import Admin from "./pages/Admin";
+import Games from "./pages/Games";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/user/:userId" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/social" element={<Social />} />
+              <Route path="/games" element={<Games />} />
               <Route path="/top100" element={<Top100 />} />
               <Route path="/artist/:id" element={<Artist />} />
               <Route path="/album/:id" element={<Album />} />
