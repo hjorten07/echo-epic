@@ -1,16 +1,23 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { HeroSection } from "@/components/HeroSection";
 import { ThisOrThat } from "@/components/ThisOrThat";
+import { HigherLowerGame } from "@/components/HigherLowerGame";
 import { MusicCard } from "@/components/MusicCard";
 import { StarRating } from "@/components/StarRating";
+import { SoundWaveAnimation } from "@/components/SoundWaveAnimation";
 import { Loader2 } from "lucide-react";
 import { useRecentRatings, useTopRatings } from "@/hooks/useRatings";
 import { useQuery } from "@tanstack/react-query";
 import { searchAll } from "@/lib/musicbrainz";
 import { format } from "date-fns";
 
+const games = ["thisOrThat", "higherLower"] as const;
+
 const Index = () => {
+  const [randomGame] = useState(() => games[Math.floor(Math.random() * games.length)]);
+  
   const { data: recentRatings, isLoading: recentLoading } = useRecentRatings(8);
   const { data: topAlbums, isLoading: topLoading } = useTopRatings("album", 5);
 
@@ -29,9 +36,14 @@ const Index = () => {
         <HeroSection />
         
         <div className="container mx-auto px-4 pb-20">
-          {/* This or That Game */}
+          {/* Sound Wave Animation */}
+          <div className="relative mb-4">
+            <SoundWaveAnimation />
+          </div>
+          
+          {/* Random Game */}
           <div className="mb-12">
-            <ThisOrThat />
+            {randomGame === "thisOrThat" ? <ThisOrThat /> : <HigherLowerGame />}
           </div>
 
           {/* Two Column Layout */}
