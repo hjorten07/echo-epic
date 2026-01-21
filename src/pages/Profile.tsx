@@ -4,8 +4,10 @@ import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { StarRating } from "@/components/StarRating";
-import { Badge } from "@/components/Badge";
-import { Loader2, Calendar, Edit2, Check, X, Users } from "lucide-react";
+import { BadgesSection } from "@/components/BadgesSection";
+import { FollowersModal } from "@/components/FollowersModal";
+import { AllRatingsModal } from "@/components/AllRatingsModal";
+import { Loader2, Calendar, Edit2, Check, X, Users, Plus, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -42,15 +44,19 @@ const Profile = () => {
   const [selectedCategory, setSelectedCategory] = useState<"song" | "album" | "artist">("song");
   const [stats, setStats] = useState({ total: 0, avg: 0, high: 0 });
   const [isFollowing, setIsFollowing] = useState(false);
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [followersModalOpen, setFollowersModalOpen] = useState(false);
+  const [followingModalOpen, setFollowingModalOpen] = useState(false);
+  const [allRatingsModalOpen, setAllRatingsModalOpen] = useState(false);
+  const [canViewProfile, setCanViewProfile] = useState(true);
 
   const isOwnProfile = user?.id === userId || (!userId && !!user);
   const displayUserId = userId || user?.id;
 
   useEffect(() => {
     if (!displayUserId && !authLoading && !user) {
-      // Not logged in and no userId in URL
       return;
     }
 
@@ -78,32 +84,12 @@ const Profile = () => {
       setProfileData(profile);
       setEditBio(profile.bio || "");
 
-      // Fetch ratings
-      const { data: ratings } = await supabase
-        .from("ratings")
-        .select("*")
-        .eq("user_id", id)
-        .order("rating", { ascending: false });
-
-      if (ratings) {
-        setUserRatings(ratings as UserRating[]);
-        
-        // Calculate stats
-        const total = ratings.length;
-        const avg = total > 0 ? ratings.reduce((sum, r) => sum + r.rating, 0) / total : 0;
-        const high = ratings.filter(r => r.rating >= 8).length;
-        setStats({ total, avg, high });
-      }
-
-      // Fetch follow counts
-      const [{ count: followers }, { count: following }] = await Promise.all([
-        supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", id),
-        supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", id),
-      ]);
-      setFollowersCount(followers || 0);
-      setFollowingCount(following || 0);
-
-      // Check if current user is following this profile
+      // Check if current user can view this profile
+      const isOwn = user?.id === id;
+      const isPublic = !profile.is_private;
+      
+      // Check if following (for private profiles)
+      let following = false;
       if (user && user.id !== id) {
         const { data: followData } = await supabase
           .from("follows")
@@ -111,8 +97,50 @@ const Profile = () => {
           .eq("follower_id", user.id)
           .eq("following_id", id)
           .maybeSingle();
-        setIsFollowing(!!followData);
+        following = !!followData;
+        setIsFollowing(following);
+        
+        // Check for pending request
+        if (!following && profile.is_private) {
+          const { data: requestData } = await supabase
+            .from("follow_requests")
+            .select("id")
+            .eq("requester_id", user.id)
+            .eq("target_id", id)
+            .eq("status", "pending")
+            .maybeSingle();
+          setHasPendingRequest(!!requestData);
+        }
       }
+
+      const viewable = isOwn || isPublic || following;
+      setCanViewProfile(viewable);
+
+      if (viewable) {
+        // Fetch ratings
+        const { data: ratings } = await supabase
+          .from("ratings")
+          .select("*")
+          .eq("user_id", id)
+          .order("rating", { ascending: false });
+
+        if (ratings) {
+          setUserRatings(ratings as UserRating[]);
+          
+          const total = ratings.length;
+          const avg = total > 0 ? ratings.reduce((sum, r) => sum + r.rating, 0) / total : 0;
+          const high = ratings.filter(r => r.rating >= 8).length;
+          setStats({ total, avg, high });
+        }
+      }
+
+      // Fetch follow counts
+      const [followersResult, followingResult] = await Promise.all([
+        supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", id),
+        supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", id),
+      ]);
+      setFollowersCount(followersResult.count || 0);
+      setFollowingCount(followingResult.count || 0);
     } catch (error) {
       console.error("Error fetching profile:", error);
     }
@@ -137,6 +165,31 @@ const Profile = () => {
         .eq("following_id", displayUserId);
       setIsFollowing(false);
       setFollowersCount(prev => prev - 1);
+    } else if (profileData?.is_private) {
+      // Send follow request for private profiles
+      if (hasPendingRequest) {
+        // Cancel request
+        await supabase.from("follow_requests").delete()
+          .eq("requester_id", user.id)
+          .eq("target_id", displayUserId);
+        setHasPendingRequest(false);
+      } else {
+        await supabase.from("follow_requests").insert({
+          requester_id: user.id,
+          target_id: displayUserId,
+        });
+        setHasPendingRequest(true);
+        
+        // Create notification for target user
+        await supabase.from("notifications").insert({
+          user_id: displayUserId,
+          type: "follow_request",
+          title: "New Follow Request",
+          message: `${currentUserProfile?.username || "Someone"} wants to follow you`,
+          related_item_type: "user",
+          related_item_id: user.id,
+        });
+      }
     } else {
       await supabase.from("follows").insert({
         follower_id: user.id,
@@ -144,20 +197,20 @@ const Profile = () => {
       });
       setIsFollowing(true);
       setFollowersCount(prev => prev + 1);
+      
+      // Create notification
+      await supabase.from("notifications").insert({
+        user_id: displayUserId,
+        type: "new_follower",
+        title: "New Follower",
+        message: `${currentUserProfile?.username || "Someone"} started following you`,
+        related_item_type: "user",
+        related_item_id: user.id,
+      });
     }
   };
 
   const filteredRatings = userRatings.filter(r => r.item_type === selectedCategory).slice(0, 10);
-
-  const getBadges = (): ("10_ratings" | "50_ratings" | "100_ratings" | "1000_ratings" | "10000_ratings")[] => {
-    const badges: ("10_ratings" | "50_ratings" | "100_ratings" | "1000_ratings" | "10000_ratings")[] = [];
-    if (stats.total >= 10) badges.push("10_ratings");
-    if (stats.total >= 50) badges.push("50_ratings");
-    if (stats.total >= 100) badges.push("100_ratings");
-    if (stats.total >= 1000) badges.push("1000_ratings");
-    if (stats.total >= 10000) badges.push("10000_ratings");
-    return badges;
-  };
 
   if (authLoading || loading) {
     return (
@@ -223,7 +276,7 @@ const Profile = () => {
           <div className="glass-card rounded-2xl p-8">
             {/* Header */}
             <div className="flex items-start gap-6 mb-8">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center">
+              <div className="w-24 h-24 rounded-full ring-4 ring-primary/30 bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center overflow-hidden">
                 {profileData.avatar_url ? (
                   <img src={profileData.avatar_url} alt={profileData.username} className="w-full h-full rounded-full object-cover" />
                 ) : (
@@ -234,155 +287,202 @@ const Profile = () => {
               </div>
               
               <div className="flex-1">
-                <h1 className="font-display text-2xl font-bold">{profileData.username}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="font-display text-2xl font-bold">{profileData.username}</h1>
+                  {profileData.is_private && (
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                   <Calendar className="w-4 h-4" />
                   <span>Joined {format(new Date(profileData.created_at), "MMMM yyyy")}</span>
                 </div>
                 
                 {/* Bio */}
-                <div className="mt-4">
-                  {isEditing ? (
-                    <div className="space-y-2">
-                      <Textarea
-                        value={editBio}
-                        onChange={(e) => setEditBio(e.target.value)}
-                        placeholder="What music are you into?"
-                        className="resize-none"
-                        rows={3}
-                      />
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" onClick={handleSaveBio}>
-                          <Check className="w-4 h-4 mr-1" /> Save
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
-                          <X className="w-4 h-4 mr-1" /> Cancel
-                        </Button>
-                        <span className="text-xs text-muted-foreground ml-auto">
-                          {editBio.split(/\s+/).filter(Boolean).length}/200 words
-                        </span>
+                {canViewProfile && (
+                  <div className="mt-4">
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          value={editBio}
+                          onChange={(e) => setEditBio(e.target.value)}
+                          placeholder="What music are you into?"
+                          className="resize-none"
+                          rows={3}
+                        />
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" onClick={handleSaveBio}>
+                            <Check className="w-4 h-4 mr-1" /> Save
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
+                            <X className="w-4 h-4 mr-1" /> Cancel
+                          </Button>
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            {editBio.split(/\s+/).filter(Boolean).length}/200 words
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start gap-2">
-                      <p className="text-muted-foreground">
-                        {profileData.bio || (isOwnProfile ? `What music are you into, ${profileData.username}?` : "No bio yet")}
-                      </p>
-                      {isOwnProfile && (
-                        <button onClick={() => setIsEditing(true)} className="text-primary hover:text-primary/80">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      <div className="flex items-start gap-2">
+                        <p className="text-muted-foreground">
+                          {profileData.bio || (isOwnProfile ? `What music are you into, ${profileData.username}?` : "No bio yet")}
+                        </p>
+                        {isOwnProfile && (
+                          <button onClick={() => setIsEditing(true)} className="text-primary hover:text-primary/80">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Private profile message */}
+                {!canViewProfile && (
+                  <div className="mt-4 p-4 rounded-lg bg-secondary/50 text-center">
+                    <Lock className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-muted-foreground">This profile is private</p>
+                    <p className="text-sm text-muted-foreground">Follow this user to see their ratings</p>
+                  </div>
+                )}
 
                 {/* Follow button & counts */}
                 <div className="flex items-center gap-4 mt-4">
-                  <div className="flex items-center gap-1 text-sm">
+                  <button
+                    onClick={() => setFollowersModalOpen(true)}
+                    className="flex items-center gap-1 text-sm hover:text-primary transition-colors"
+                  >
                     <Users className="w-4 h-4" />
                     <span className="font-semibold">{followersCount}</span>
                     <span className="text-muted-foreground">followers</span>
-                  </div>
-                  <div className="text-sm">
+                  </button>
+                  <button
+                    onClick={() => setFollowingModalOpen(true)}
+                    className="text-sm hover:text-primary transition-colors"
+                  >
                     <span className="font-semibold">{followingCount}</span>
                     <span className="text-muted-foreground"> following</span>
-                  </div>
+                  </button>
                   {!isOwnProfile && user && (
                     <Button
                       size="sm"
-                      variant={isFollowing ? "secondary" : "default"}
+                      variant={isFollowing ? "secondary" : hasPendingRequest ? "outline" : "default"}
                       onClick={handleFollow}
                     >
-                      {isFollowing ? "Unfollow" : "Follow"}
+                      {isFollowing ? "Unfollow" : hasPendingRequest ? "Requested" : profileData.is_private ? "Request" : "Follow"}
                     </Button>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Top 10 Ratings */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display text-xl font-semibold">Top 10 Rated</h2>
-                <div className="flex gap-1">
-                  {(["song", "album", "artist"] as const).map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setSelectedCategory(cat)}
-                      className={cn(
-                        "px-3 py-1 text-sm rounded-lg transition-colors capitalize",
-                        selectedCategory === cat
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {cat}s
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              {filteredRatings.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No {selectedCategory} ratings yet
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {filteredRatings.map((rating, index) => (
-                    <Link
-                      key={rating.id}
-                      to={`/${rating.item_type}/${rating.item_id}`}
-                      className="flex items-center gap-4 p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-                    >
-                      <span className="w-6 text-center font-semibold text-muted-foreground">
-                        {index + 1}
-                      </span>
-                      <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden">
-                        {rating.item_image ? (
-                          <img src={rating.item_image} alt={rating.item_name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-xs font-bold">{rating.item_name[0]}</span>
-                        )}
+            {canViewProfile && (
+              <>
+                {/* Top 10 Ratings */}
+                <div className="mb-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-display text-xl font-semibold">Top 10 Rated</h2>
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        {(["song", "album", "artist"] as const).map((cat) => (
+                          <button
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat)}
+                            className={cn(
+                              "px-3 py-1 text-sm rounded-lg transition-colors capitalize",
+                              selectedCategory === cat
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-secondary text-muted-foreground hover:text-foreground"
+                            )}
+                          >
+                            {cat}s
+                          </button>
+                        ))}
                       </div>
-                      <span className="flex-1 font-medium truncate">{rating.item_name}</span>
-                      <StarRating rating={rating.rating} readonly size="sm" showValue />
-                    </Link>
-                  ))}
+                      <button
+                        onClick={() => setAllRatingsModalOpen(true)}
+                        className="flex items-center gap-1 px-3 py-1 text-sm rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        All Ratings
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {filteredRatings.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No {selectedCategory} ratings yet
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredRatings.map((rating, index) => (
+                        <Link
+                          key={rating.id}
+                          to={`/${rating.item_type}/${rating.item_id}`}
+                          className="flex items-center gap-4 p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                        >
+                          <span className="w-6 text-center font-semibold text-muted-foreground">
+                            {index + 1}
+                          </span>
+                          <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden">
+                            {rating.item_image ? (
+                              <img src={rating.item_image} alt={rating.item_name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-bold">{rating.item_name[0]}</span>
+                            )}
+                          </div>
+                          <span className="flex-1 font-medium truncate">{rating.item_name}</span>
+                          <StarRating rating={rating.rating} readonly size="sm" showValue />
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-8">
-              <div className="bg-secondary/50 rounded-xl p-4 text-center">
-                <p className="text-2xl font-display font-bold">{stats.avg.toFixed(1)}</p>
-                <p className="text-sm text-muted-foreground">Avg Rating</p>
-              </div>
-              <div className="bg-secondary/50 rounded-xl p-4 text-center">
-                <p className="text-2xl font-display font-bold">{stats.total}</p>
-                <p className="text-sm text-muted-foreground">Total Ratings</p>
-              </div>
-              <div className="bg-secondary/50 rounded-xl p-4 text-center">
-                <p className="text-2xl font-display font-bold">{stats.high}</p>
-                <p className="text-sm text-muted-foreground">High Ratings (8+)</p>
-              </div>
-            </div>
-
-            {/* Badges */}
-            {getBadges().length > 0 && (
-              <div>
-                <h2 className="font-display text-xl font-semibold mb-4">Badges</h2>
-                <div className="flex flex-wrap gap-2">
-                  {getBadges().map((badge) => (
-                    <Badge key={badge} type={badge} />
-                  ))}
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-4 mb-8">
+                  <div className="bg-secondary/50 rounded-xl p-4 text-center">
+                    <p className="text-2xl font-display font-bold">{stats.avg.toFixed(1)}</p>
+                    <p className="text-sm text-muted-foreground">Avg Rating</p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-xl p-4 text-center">
+                    <p className="text-2xl font-display font-bold">{stats.total}</p>
+                    <p className="text-sm text-muted-foreground">Total Ratings</p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-xl p-4 text-center">
+                    <p className="text-2xl font-display font-bold">{stats.high}</p>
+                    <p className="text-sm text-muted-foreground">High Ratings (8+)</p>
+                  </div>
                 </div>
-              </div>
+
+                {/* Badges */}
+                <BadgesSection userId={displayUserId} />
+              </>
             )}
           </div>
         </div>
       </main>
+
+      {/* Modals */}
+      <FollowersModal
+        userId={displayUserId}
+        type="followers"
+        isOpen={followersModalOpen}
+        onClose={() => setFollowersModalOpen(false)}
+      />
+      <FollowersModal
+        userId={displayUserId}
+        type="following"
+        isOpen={followingModalOpen}
+        onClose={() => setFollowingModalOpen(false)}
+      />
+      {isOwnProfile && displayUserId && (
+        <AllRatingsModal
+          userId={displayUserId}
+          isOpen={allRatingsModalOpen}
+          onClose={() => setAllRatingsModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Palette, Lock, Bell, User, Eye, EyeOff, Check, Camera, Loader2, Shield } from "lucide-react";
+import { ArrowLeft, Palette, Lock, Bell, User, Eye, EyeOff, Check, Camera, Loader2, Shield, Plus } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -19,12 +19,20 @@ interface ThemeOption {
   colors: string[];
 }
 
-const themes: ThemeOption[] = [
+const mainThemes: ThemeOption[] = [
   { id: "default", name: "Vinyl Gold", colors: ["#1a1614", "#d97706", "#fbbf24"] },
   { id: "neon-purple", name: "Neon Purple", colors: ["#1a0a2e", "#a855f7", "#e879f9"] },
   { id: "ocean-blue", name: "Ocean Blue", colors: ["#0a1929", "#0ea5e9", "#38bdf8"] },
   { id: "sunset", name: "Sunset Orange", colors: ["#1a0f0a", "#f97316", "#fb923c"] },
   { id: "mint", name: "Mint Green", colors: ["#0a1a14", "#14b8a6", "#2dd4bf"] },
+];
+
+const extraThemes: ThemeOption[] = [
+  { id: "rose", name: "Rose Pink", colors: ["#1a0d0d", "#f43f5e", "#fb7185"] },
+  { id: "crimson", name: "Crimson Red", colors: ["#1a0a0a", "#dc2626", "#ef4444"] },
+  { id: "lavender", name: "Lavender", colors: ["#140f1a", "#a78bfa", "#c4b5fd"] },
+  { id: "teal", name: "Teal", colors: ["#0a1414", "#14b8a6", "#2dd4bf"] },
+  { id: "amber", name: "Amber", colors: ["#1a1408", "#f59e0b", "#fbbf24"] },
 ];
 
 const Settings = () => {
@@ -36,6 +44,7 @@ const Settings = () => {
   const [pushNotifications, setPushNotifications] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [uploading, setUploading] = useState(false);
+  const [showMoreThemes, setShowMoreThemes] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -44,9 +53,11 @@ const Settings = () => {
     }
   }, [profile]);
 
+  const allThemes = [...mainThemes, ...extraThemes];
+
   const handleThemeChange = (themeId: ColorTheme) => {
     setTheme(themeId);
-    toast.success(`Theme changed to ${themes.find(t => t.id === themeId)?.name}`);
+    toast.success(`Theme changed to ${allThemes.find(t => t.id === themeId)?.name}`);
   };
 
   const handlePrivacyChange = async (isPublic: boolean) => {
@@ -189,8 +200,9 @@ const Settings = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {themes.map((t) => (
+              {/* Main Themes */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+                {mainThemes.map((t) => (
                   <button
                     key={t.id}
                     onClick={() => handleThemeChange(t.id)}
@@ -220,7 +232,61 @@ const Settings = () => {
                     <p className="text-sm font-medium">{t.name}</p>
                   </button>
                 ))}
+                
+                {/* More themes toggle */}
+                <button
+                  onClick={() => setShowMoreThemes(!showMoreThemes)}
+                  className="relative p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all flex flex-col items-center justify-center"
+                >
+                  <div className="flex gap-1 mb-3 blur-sm opacity-60">
+                    {extraThemes[0].colors.map((color, i) => (
+                      <div
+                        key={i}
+                        className="w-6 h-6 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                  <Plus className="w-6 h-6 text-muted-foreground mb-1" />
+                  <p className="text-sm text-muted-foreground">{showMoreThemes ? "Less" : "More"}</p>
+                </button>
               </div>
+
+              {/* Extra Themes */}
+              {showMoreThemes && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {extraThemes.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => handleThemeChange(t.id)}
+                      className={cn(
+                        "relative p-4 rounded-xl border-2 transition-all",
+                        theme === t.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/50"
+                      )}
+                    >
+                      {theme === t.id && (
+                        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                          <Check className="w-3 h-3 text-primary-foreground" />
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-1 mb-3">
+                        {t.colors.map((color, i) => (
+                          <div
+                            key={i}
+                            className="w-6 h-6 rounded-full"
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                      </div>
+                      
+                      <p className="text-sm font-medium">{t.name}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
             </section>
 
             {/* Privacy */}

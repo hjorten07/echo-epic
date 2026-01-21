@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Music2, Disc3, Mic2, Shuffle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { StarRating } from "@/components/StarRating";
+import { Music2, Disc3, Mic2, Shuffle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -74,24 +75,43 @@ export const ThisOrThat = ({ isLoggedIn = false, onPlay }: ThisOrThatProps) => {
     fetchOptions();
   };
 
-  const handleChoice = async (choice: SearchResult & { coverUrl?: string }) => {
+  const [chosenItem, setChosenItem] = useState<(SearchResult & { coverUrl?: string }) | null>(null);
+  const [showRatingPrompt, setShowRatingPrompt] = useState(false);
+
+  const handleChoice = (choice: SearchResult & { coverUrl?: string }) => {
     if (!user) return;
+    setChosenItem(choice);
+    setShowRatingPrompt(true);
+    toast.success(`Great choice! You picked ${choice.name}`);
+  };
+
+  const handleRateChoice = async (rating: number) => {
+    if (!user || !chosenItem) return;
 
     try {
       await rateMutation.mutateAsync({
-        itemType: choice.type,
-        itemId: choice.id,
-        itemName: choice.name,
-        itemImage: choice.coverUrl,
-        itemSubtitle: choice.subtitle,
-        rating: 8, // High rating for chosen item
+        itemType: chosenItem.type,
+        itemId: chosenItem.id,
+        itemName: chosenItem.name,
+        itemImage: chosenItem.coverUrl,
+        itemSubtitle: chosenItem.subtitle,
+        rating,
       });
-      toast.success(`Great choice! You picked ${choice.name}`);
-      setRound(r => r + 1);
-      fetchOptions();
+      toast.success(`Rated ${chosenItem.name} ${rating}/10!`);
     } catch (error) {
-      toast.error("Failed to save choice");
+      toast.error("Failed to save rating");
     }
+    setShowRatingPrompt(false);
+    setChosenItem(null);
+    setRound(r => r + 1);
+    fetchOptions();
+  };
+
+  const handleSkipRating = () => {
+    setShowRatingPrompt(false);
+    setChosenItem(null);
+    setRound(r => r + 1);
+    fetchOptions();
   };
 
   const handleSkip = () => {
@@ -202,7 +222,35 @@ export const ThisOrThat = ({ isLoggedIn = false, onPlay }: ThisOrThatProps) => {
               </Button>
             </div>
 
-            {loading ? (
+            {showRatingPrompt && chosenItem ? (
+              /* Rating Prompt after Choice */
+              <div className="text-center py-8">
+                <div className="w-24 h-24 rounded-xl bg-secondary overflow-hidden mx-auto mb-4">
+                  {chosenItem.coverUrl ? (
+                    <img
+                      src={chosenItem.coverUrl}
+                      alt={chosenItem.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-3xl font-display font-bold text-muted-foreground/30">
+                      {chosenItem.name[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <h3 className="font-display text-xl font-semibold mb-1">{chosenItem.name}</h3>
+                {chosenItem.subtitle && (
+                  <p className="text-sm text-muted-foreground mb-4">{chosenItem.subtitle}</p>
+                )}
+                <p className="text-sm text-muted-foreground mb-4">Would you like to rate it?</p>
+                <div className="flex justify-center mb-4">
+                  <StarRating onRate={handleRateChoice} size="lg" />
+                </div>
+                <Button variant="ghost" onClick={handleSkipRating} className="text-muted-foreground">
+                  Skip rating
+                </Button>
+              </div>
+            ) : loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
@@ -275,7 +323,7 @@ export const ThisOrThat = ({ isLoggedIn = false, onPlay }: ThisOrThatProps) => {
             )}
 
             {/* Skip Button */}
-            {!loading && options.length >= 2 && (
+            {!loading && !showRatingPrompt && options.length >= 2 && (
               <div className="flex justify-center mt-4">
                 <Button variant="ghost" onClick={handleSkip} className="text-muted-foreground">
                   Skip this one

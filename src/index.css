@@ -207,6 +207,181 @@
     --gradient-gold: linear-gradient(135deg, hsl(160 70% 45%), hsl(140 65% 40%));
     --shadow-glow: 0 0 40px hsl(160 70% 45% / 0.2);
   }
+
+  /* Rose Pink Theme */
+  .theme-rose {
+    --background: 350 40% 5%;
+    --foreground: 350 20% 95%;
+
+    --card: 350 35% 9%;
+    --card-foreground: 350 20% 95%;
+
+    --popover: 350 38% 7%;
+    --popover-foreground: 350 20% 95%;
+
+    --primary: 350 90% 60%;
+    --primary-foreground: 350 40% 5%;
+
+    --secondary: 350 25% 16%;
+    --secondary-foreground: 350 20% 95%;
+
+    --muted: 350 25% 13%;
+    --muted-foreground: 345 15% 55%;
+
+    --accent: 350 90% 60%;
+    --accent-foreground: 350 40% 5%;
+
+    --border: 350 22% 21%;
+    --input: 350 22% 21%;
+    --ring: 350 90% 60%;
+
+    --star-empty: 350 18% 26%;
+    --star-filled: 350 90% 60%;
+    --star-hover: 350 90% 70%;
+
+    --gradient-gold: linear-gradient(135deg, hsl(350 90% 60%), hsl(330 85% 55%));
+    --shadow-glow: 0 0 40px hsl(350 90% 60% / 0.2);
+  }
+
+  /* Crimson Red Theme */
+  .theme-crimson {
+    --background: 0 45% 5%;
+    --foreground: 0 20% 95%;
+
+    --card: 0 40% 9%;
+    --card-foreground: 0 20% 95%;
+
+    --popover: 0 42% 7%;
+    --popover-foreground: 0 20% 95%;
+
+    --primary: 0 85% 55%;
+    --primary-foreground: 0 45% 5%;
+
+    --secondary: 0 28% 16%;
+    --secondary-foreground: 0 20% 95%;
+
+    --muted: 0 28% 13%;
+    --muted-foreground: 355 15% 55%;
+
+    --accent: 0 85% 55%;
+    --accent-foreground: 0 45% 5%;
+
+    --border: 0 24% 21%;
+    --input: 0 24% 21%;
+    --ring: 0 85% 55%;
+
+    --star-empty: 0 20% 26%;
+    --star-filled: 0 85% 55%;
+    --star-hover: 0 85% 65%;
+
+    --gradient-gold: linear-gradient(135deg, hsl(0 85% 55%), hsl(340 80% 50%));
+    --shadow-glow: 0 0 40px hsl(0 85% 55% / 0.2);
+  }
+
+  /* Lavender Theme */
+  .theme-lavender {
+    --background: 260 35% 5%;
+    --foreground: 260 20% 95%;
+
+    --card: 260 30% 9%;
+    --card-foreground: 260 20% 95%;
+
+    --popover: 260 32% 7%;
+    --popover-foreground: 260 20% 95%;
+
+    --primary: 260 70% 65%;
+    --primary-foreground: 260 35% 5%;
+
+    --secondary: 260 22% 16%;
+    --secondary-foreground: 260 20% 95%;
+
+    --muted: 260 22% 13%;
+    --muted-foreground: 255 15% 55%;
+
+    --accent: 260 70% 65%;
+    --accent-foreground: 260 35% 5%;
+
+    --border: 260 18% 21%;
+    --input: 260 18% 21%;
+    --ring: 260 70% 65%;
+
+    --star-empty: 260 15% 26%;
+    --star-filled: 260 70% 65%;
+    --star-hover: 260 70% 75%;
+
+    --gradient-gold: linear-gradient(135deg, hsl(260 70% 65%), hsl(280 65% 60%));
+    --shadow-glow: 0 0 40px hsl(260 70% 65% / 0.2);
+  }
+
+  /* Teal Theme */
+  .theme-teal {
+    --background: 180 40% 4%;
+    --foreground: 180 20% 95%;
+
+    --card: 180 35% 8%;
+    --card-foreground: 180 20% 95%;
+
+    --popover: 180 38% 6%;
+    --popover-foreground: 180 20% 95%;
+
+    --primary: 180 75% 45%;
+    --primary-foreground: 180 40% 4%;
+
+    --secondary: 180 25% 15%;
+    --secondary-foreground: 180 20% 95%;
+
+    --muted: 180 25% 12%;
+    --muted-foreground: 175 15% 55%;
+
+    --accent: 180 75% 45%;
+    --accent-foreground: 180 40% 4%;
+
+    --border: 180 20% 20%;
+    --input: 180 20% 20%;
+    --ring: 180 75% 45%;
+
+    --star-empty: 180 18% 25%;
+    --star-filled: 180 75% 45%;
+    --star-hover: 180 75% 55%;
+
+    --gradient-gold: linear-gradient(135deg, hsl(180 75% 45%), hsl(160 70% 40%));
+    --shadow-glow: 0 0 40px hsl(180 75% 45% / 0.2);
+  }
+
+  /* Amber Theme */
+  .theme-amber {
+    --background: 45 45% 4%;
+    --foreground: 45 20% 95%;
+
+    --card: 45 40% 8%;
+    --card-foreground: 45 20% 95%;
+
+    --popover: 45 42% 6%;
+    --popover-foreground: 45 20% 95%;
+
+    --primary: 45 95% 50%;
+    --primary-foreground: 45 45% 4%;
+
+    --secondary: 45 28% 15%;
+    --secondary-foreground: 45 20% 95%;
+
+    --muted: 45 28% 12%;
+    --muted-foreground: 40 15% 55%;
+
+    --accent: 45 95% 50%;
+    --accent-foreground: 45 45% 4%;
+
+    --border: 45 22% 20%;
+    --input: 45 22% 20%;
+    --ring: 45 95% 50%;
+
+    --star-empty: 45 18% 25%;
+    --star-filled: 45 95% 50%;
+    --star-hover: 45 95% 60%;
+
+    --gradient-gold: linear-gradient(135deg, hsl(45 95% 50%), hsl(30 90% 45%));
+    --shadow-glow: 0 0 40px hsl(45 95% 50% / 0.2);
+  }
 }
 
 @layer base {

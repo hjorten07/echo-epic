@@ -1,8 +1,30 @@
 import { useState, useEffect } from "react";
 
-export type ColorTheme = "default" | "neon-purple" | "ocean-blue" | "sunset" | "mint";
+export type ColorTheme = 
+  | "default" 
+  | "neon-purple" 
+  | "ocean-blue" 
+  | "sunset" 
+  | "mint"
+  | "rose"
+  | "crimson"
+  | "lavender"
+  | "teal"
+  | "amber";
 
 const THEME_KEY = "ratethemusic-theme";
+
+const ALL_THEME_CLASSES = [
+  "theme-neon-purple",
+  "theme-ocean-blue",
+  "theme-sunset",
+  "theme-mint",
+  "theme-rose",
+  "theme-crimson",
+  "theme-lavender",
+  "theme-teal",
+  "theme-amber",
+];
 
 export const useTheme = () => {
   const [theme, setThemeState] = useState<ColorTheme>(() => {
@@ -20,12 +42,7 @@ export const useTheme = () => {
 
   const applyTheme = (newTheme: ColorTheme) => {
     // Remove all theme classes
-    document.documentElement.classList.remove(
-      "theme-neon-purple",
-      "theme-ocean-blue",
-      "theme-sunset",
-      "theme-mint"
-    );
+    document.documentElement.classList.remove(...ALL_THEME_CLASSES);
 
     // Add new theme class if not default
     if (newTheme !== "default") {
