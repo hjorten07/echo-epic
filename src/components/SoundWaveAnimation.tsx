@@ -20,13 +20,14 @@ export const SoundWaveAnimation = ({ className = "" }: SoundWaveAnimationProps) 
       const parent = canvas.parentElement;
       if (parent) {
         canvas.width = parent.offsetWidth;
-        canvas.height = 120; // Fixed height for the wave
+        canvas.height = 140;
       }
     };
 
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
 
+    // Track mouse globally on the entire document
     const handleMouseMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
       mousePos.current = {
@@ -40,8 +41,9 @@ export const SoundWaveAnimation = ({ className = "" }: SoundWaveAnimationProps) 
       mousePos.current.active = false;
     };
 
-    canvas.addEventListener("mousemove", handleMouseMove);
-    canvas.addEventListener("mouseleave", handleMouseLeave);
+    // Listen to mouse movement on the entire document
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseleave", handleMouseLeave);
 
     let time = 0;
 
@@ -50,68 +52,75 @@ export const SoundWaveAnimation = ({ className = "" }: SoundWaveAnimationProps) 
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Get primary color from CSS variable - parse HSL values properly
+      // Get primary color from CSS variable
       const computedStyle = getComputedStyle(document.documentElement);
       const primaryHsl = computedStyle.getPropertyValue("--primary").trim();
       
-      // The value is like "25 100% 55%" - we need to parse it
       const hslParts = primaryHsl.split(/\s+/);
       const h = hslParts[0] || "25";
       const s = hslParts[1] || "100%";
       const l = hslParts[2] || "55%";
       
-      const bars = 50;
+      const bars = 60;
       const barWidth = canvas.width / bars;
       const centerY = canvas.height / 2;
 
       for (let i = 0; i < bars; i++) {
         const x = i * barWidth + barWidth / 2;
         
-        // Calculate distance from mouse for interactive effect
+        // Calculate distance from mouse for interactive ripple effect
         let influence = 0;
         if (mousePos.current.active) {
           const dx = x - mousePos.current.x;
-          const dy = centerY - mousePos.current.y;
+          const dy = Math.abs(mousePos.current.y - centerY);
           const distance = Math.sqrt(dx * dx + dy * dy);
-          influence = Math.max(0, 1 - distance / 150);
+          // Larger influence radius for smoother tracking
+          influence = Math.max(0, 1 - distance / 200);
         }
 
-        // Create varied wave pattern - different frequencies for different bars
-        const waveOffset = i * 0.15;
-        const baseAmplitude = 8 + Math.sin(time * 0.03 + waveOffset) * 8;
-        const secondaryWave = Math.sin(time * 0.05 + i * 0.2) * 6;
-        const tertiaryWave = Math.sin(time * 0.02 + i * 0.4) * 4;
+        // Create varied wave pattern with multiple frequencies
+        const waveOffset = i * 0.12;
+        const baseAmplitude = 6 + Math.sin(time * 0.025 + waveOffset) * 6;
+        const secondaryWave = Math.sin(time * 0.04 + i * 0.18) * 5;
+        const tertiaryWave = Math.sin(time * 0.015 + i * 0.35) * 3;
         
-        // Mouse influence adds extra height
-        const mouseAmplitude = influence * 35;
+        // Mouse influence creates a ripple effect that spreads from cursor
+        const mouseAmplitude = influence * 50;
         
         const barHeight = Math.max(4, baseAmplitude + secondaryWave + tertiaryWave + mouseAmplitude);
         
-        // Calculate opacity based on position and mouse
-        const baseOpacity = 0.15 + Math.sin(time * 0.02 + i * 0.1) * 0.1;
-        const opacity = baseOpacity + influence * 0.5;
+        // Opacity based on position and mouse influence
+        const baseOpacity = 0.2 + Math.sin(time * 0.018 + i * 0.08) * 0.1;
+        const opacity = Math.min(0.9, baseOpacity + influence * 0.6);
         
-        // Draw bar with rounded caps (like the reference image)
-        ctx.fillStyle = `hsla(${h}, ${s}, ${l}, ${opacity})`;
-        ctx.beginPath();
-        
-        const barWidthActual = barWidth * 0.4;
+        // Draw bar with rounded caps (pill shape like reference image)
+        const barWidthActual = barWidth * 0.45;
         const radius = barWidthActual / 2;
-        
-        // Draw rounded rectangle (pill shape like the reference)
         const left = x - barWidthActual / 2;
         const top = centerY - barHeight;
-        const bottom = centerY + barHeight;
         const height = barHeight * 2;
+        
+        // Add glow effect when mouse is near
+        if (influence > 0.3) {
+          ctx.shadowColor = `hsla(${h}, ${s}, ${l}, ${influence * 0.5})`;
+          ctx.shadowBlur = influence * 15;
+        } else {
+          ctx.shadowBlur = 0;
+        }
+        
+        ctx.fillStyle = `hsla(${h}, ${s}, ${l}, ${opacity})`;
+        ctx.beginPath();
         
         if (height > radius * 2) {
           ctx.roundRect(left, top, barWidthActual, height, radius);
         } else {
-          // For very small bars, just draw a circle
           ctx.arc(x, centerY, radius, 0, Math.PI * 2);
         }
         ctx.fill();
       }
+
+      // Reset shadow
+      ctx.shadowBlur = 0;
 
       time++;
       animationRef.current = requestAnimationFrame(animate);
@@ -121,8 +130,8 @@ export const SoundWaveAnimation = ({ className = "" }: SoundWaveAnimationProps) 
 
     return () => {
       window.removeEventListener("resize", resizeCanvas);
-      canvas.removeEventListener("mousemove", handleMouseMove);
-      canvas.removeEventListener("mouseleave", handleMouseLeave);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseleave", handleMouseLeave);
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
@@ -132,8 +141,7 @@ export const SoundWaveAnimation = ({ className = "" }: SoundWaveAnimationProps) 
   return (
     <canvas
       ref={canvasRef}
-      className={`w-full h-[120px] cursor-crosshair ${className}`}
-      style={{ opacity: 0.8 }}
+      className={`w-full h-[140px] ${className}`}
     />
   );
 };
