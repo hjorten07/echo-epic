@@ -139,8 +139,8 @@ export const MessagesDropdown = () => {
             </p>
           </div>
         ) : (
-          <div className="max-h-80 overflow-y-auto">
-            {conversations.map((conv) => (
+          <div className="max-h-60 overflow-y-auto">
+            {conversations.slice(0, 5).map((conv) => (
               <DropdownMenuItem key={conv.id} asChild>
                 <Link
                   to={`/messages/${conv.id}`}
@@ -174,6 +174,16 @@ export const MessagesDropdown = () => {
             ))}
           </div>
         )}
+
+        {/* Open Messages Button */}
+        <div className="border-t border-border p-2">
+          <Link
+            to="/conversations"
+            className="flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors"
+          >
+            Open Messages
+          </Link>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

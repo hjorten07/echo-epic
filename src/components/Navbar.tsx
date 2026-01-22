@@ -175,11 +175,12 @@ export const Navbar = () => {
               </div>
             )}
 
-            {/* Mobile Menu Toggle */}
+            {/* Mobile Menu Toggle - always visible */}
             <MobileMenu
               trigger={
-                <Button variant="ghost" size="icon" className="md:hidden">
+                <Button variant="ghost" size="sm" className="flex items-center gap-1">
                   <Menu className="w-5 h-5" />
+                  <span className="text-sm hidden sm:inline">Menu</span>
                 </Button>
               }
             />
