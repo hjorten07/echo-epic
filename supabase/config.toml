@@ -1,1 +1,7 @@
 project_id = "qfpodydoxgpdwtcnzvmd"
+
+[functions.award-badges]
+verify_jwt = false
+
+[functions.update-streak]
+verify_jwt = false
