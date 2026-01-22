@@ -46,6 +46,7 @@ export const RecentlyRated = ({ items }: RecentlyRatedProps) => {
                   <img
                     src={item.imageUrl}
                     alt={item.name}
+                    loading="lazy"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -85,6 +86,7 @@ export const RecentlyRated = ({ items }: RecentlyRatedProps) => {
                   <img
                     src={item.ratedBy.avatarUrl}
                     alt={item.ratedBy.username}
+                    loading="lazy"
                     className="w-full h-full object-cover"
                   />
                 ) : (

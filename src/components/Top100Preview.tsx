@@ -62,7 +62,7 @@ export const Top100Preview = ({ items, category }: Top100PreviewProps) => {
             {/* Image */}
             <div className="w-12 h-12 rounded-lg overflow-hidden bg-secondary shrink-0">
               {item.imageUrl ? (
-                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                <img src={item.imageUrl} alt={item.name} loading="lazy" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground font-display">
                   {item.name[0]?.toUpperCase()}
