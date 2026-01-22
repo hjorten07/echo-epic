@@ -4,21 +4,27 @@ import { ArrowUp, ArrowDown, Loader2, Trophy, Music2, Disc3, Mic2 } from "lucide
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { searchAll, SearchResult, getCoverArt } from "@/lib/musicbrainz";
-import { useItemRating } from "@/hooks/useRatings";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-interface ItemWithRating extends SearchResult {
-  coverUrl?: string;
-  rating?: number;
+interface RatedItem {
+  item_id: string;
+  item_name: string;
+  item_image: string | null;
+  item_subtitle: string | null;
+  item_type: string;
+  avg_rating: number;
+  total_ratings: number;
 }
 
 export const HigherLowerGame = () => {
   const [selectedType, setSelectedType] = useState<"song" | "album" | "artist">("song");
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [currentItem, setCurrentItem] = useState<ItemWithRating | null>(null);
-  const [nextItem, setNextItem] = useState<ItemWithRating | null>(null);
+  const [currentItem, setCurrentItem] = useState<RatedItem | null>(null);
+  const [nextItem, setNextItem] = useState<RatedItem | null>(null);
+  const [allItems, setAllItems] = useState<RatedItem[]>([]);
+  const [usedIds, setUsedIds] = useState<Set<string>>(new Set());
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
@@ -33,32 +39,36 @@ export const HigherLowerGame = () => {
     { value: "artist" as const, label: "Artists", icon: Mic2 },
   ];
 
-  const searchTerms = ["love", "life", "heart", "night", "summer", "dream", "fire", "star", "dance", "happy", "world", "day"];
+  // Fetch all rated items of the selected type
+  const fetchRatedItems = async (type: string): Promise<RatedItem[]> => {
+    const { data, error } = await supabase
+      .from("item_ratings")
+      .select("*")
+      .eq("item_type", type)
+      .gte("total_ratings", 1) // Only items with at least 1 rating
+      .order("total_ratings", { ascending: false })
+      .limit(100);
 
-  const fetchRandomItem = async (): Promise<ItemWithRating | null> => {
-    try {
-      const randomTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)];
-      const results = await searchAll(randomTerm, 20);
-      const filtered = results.filter(r => r.type === selectedType);
-      
-      if (filtered.length === 0) return null;
-      
-      const randomItem = filtered[Math.floor(Math.random() * filtered.length)];
-      
-      let coverUrl: string | undefined;
-      if (selectedType === "album") {
-        coverUrl = await getCoverArt(randomItem.id) || undefined;
-      }
-      
-      // Generate a random "community rating" for demo purposes
-      // In production, this would come from actual ratings
-      const rating = Math.round((Math.random() * 4 + 5) * 10) / 10; // 5.0 - 9.0
-      
-      return { ...randomItem, coverUrl, rating };
-    } catch (error) {
-      console.error("Error fetching item:", error);
-      return null;
+    if (error) {
+      console.error("Error fetching rated items:", error);
+      return [];
     }
+
+    return (data || []).map((item) => ({
+      item_id: item.item_id || "",
+      item_name: item.item_name || "",
+      item_image: item.item_image,
+      item_subtitle: item.item_subtitle,
+      item_type: item.item_type || "",
+      avg_rating: Number(item.avg_rating) || 0,
+      total_ratings: Number(item.total_ratings) || 0,
+    }));
+  };
+
+  const getRandomItem = (items: RatedItem[], usedIds: Set<string>): RatedItem | null => {
+    const available = items.filter((item) => !usedIds.has(item.item_id));
+    if (available.length === 0) return null;
+    return available[Math.floor(Math.random() * available.length)];
   };
 
   const startGame = async () => {
@@ -66,33 +76,47 @@ export const HigherLowerGame = () => {
       navigate("/auth");
       return;
     }
-    
+
     setIsPlaying(true);
     setScore(0);
     setGameOver(false);
     setLoading(true);
-    
-    const first = await fetchRandomItem();
-    const second = await fetchRandomItem();
-    
-    if (first && second) {
-      setCurrentItem(first);
-      setNextItem(second);
+    setUsedIds(new Set());
+
+    const items = await fetchRatedItems(selectedType);
+
+    if (items.length < 2) {
+      toast.error(`Not enough rated ${selectedType}s to play. Need at least 2 items with ratings.`);
+      setIsPlaying(false);
+      setLoading(false);
+      return;
     }
+
+    setAllItems(items);
+
+    const first = getRandomItem(items, new Set());
+    const newUsed = new Set<string>();
+    if (first) newUsed.add(first.item_id);
     
+    const second = getRandomItem(items, newUsed);
+    if (second) newUsed.add(second.item_id);
+
+    setUsedIds(newUsed);
+    setCurrentItem(first);
+    setNextItem(second);
     setLoading(false);
   };
 
   const handleGuess = async (guessHigher: boolean) => {
     if (!currentItem || !nextItem || showResult) return;
 
-    const currentRating = currentItem.rating || 0;
-    const nextRating = nextItem.rating || 0;
-    
-    const correct = guessHigher 
-      ? nextRating >= currentRating 
+    const currentRating = currentItem.avg_rating;
+    const nextRating = nextItem.avg_rating;
+
+    const correct = guessHigher
+      ? nextRating >= currentRating
       : nextRating <= currentRating;
-    
+
     setIsCorrect(correct);
     setShowResult(true);
 
@@ -103,12 +127,21 @@ export const HigherLowerGame = () => {
         if (newScore > highScore) {
           setHighScore(newScore);
         }
-        
+
         setCurrentItem(nextItem);
-        setLoading(true);
-        const newNext = await fetchRandomItem();
-        setNextItem(newNext);
-        setLoading(false);
+        const newUsed = new Set(usedIds);
+        
+        const newNext = getRandomItem(allItems, newUsed);
+        
+        if (!newNext) {
+          // No more items available
+          toast.success(`Amazing! You've gone through all available items! Final score: ${newScore}`);
+          setGameOver(true);
+        } else {
+          newUsed.add(newNext.item_id);
+          setUsedIds(newUsed);
+          setNextItem(newNext);
+        }
         setShowResult(false);
       } else {
         setGameOver(true);
@@ -128,14 +161,14 @@ export const HigherLowerGame = () => {
               </div>
               <div>
                 <h2 className="font-display text-2xl font-bold">Higher or Lower?</h2>
-                <p className="text-muted-foreground text-sm">Guess the rating!</p>
+                <p className="text-muted-foreground text-sm">Guess the community rating!</p>
               </div>
             </div>
 
             <div className="glass-card rounded-lg p-4 bg-secondary/30">
               <p className="text-sm text-muted-foreground">
-                <strong className="text-foreground">How it works:</strong> We'll show you two {selectedType}s.
-                Guess if the next one has a higher or lower community rating. 
+                <strong className="text-foreground">How it works:</strong> We'll show you two {selectedType}s with real community ratings.
+                Guess if the next one has a higher or lower average rating.
                 Keep your streak going as long as you can!
               </p>
             </div>
@@ -189,9 +222,7 @@ export const HigherLowerGame = () => {
         <p className="text-muted-foreground mb-4">
           You scored <span className="text-primary font-bold">{score}</span> points
         </p>
-        <p className="text-sm text-muted-foreground mb-6">
-          High Score: {highScore}
-        </p>
+        <p className="text-sm text-muted-foreground mb-6">High Score: {highScore}</p>
         <div className="flex gap-4 justify-center">
           <Button onClick={startGame}>Play Again</Button>
           <Button variant="outline" onClick={() => setIsPlaying(false)}>
@@ -223,25 +254,26 @@ export const HigherLowerGame = () => {
         {/* Current Item */}
         <div className="flex-1 glass-card rounded-xl p-4 text-center">
           <div className="aspect-square rounded-lg bg-secondary overflow-hidden mb-3">
-            {currentItem.coverUrl ? (
+            {currentItem.item_image ? (
               <img
-                src={currentItem.coverUrl}
-                alt={currentItem.name}
+                src={currentItem.item_image}
+                alt={currentItem.item_name}
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-4xl font-display font-bold text-muted-foreground/30">
-                {currentItem.name[0]?.toUpperCase()}
+                {currentItem.item_name[0]?.toUpperCase()}
               </div>
             )}
           </div>
-          <h3 className="font-display font-semibold truncate">{currentItem.name}</h3>
-          {currentItem.subtitle && (
-            <p className="text-sm text-muted-foreground truncate">{currentItem.subtitle}</p>
+          <h3 className="font-display font-semibold truncate">{currentItem.item_name}</h3>
+          {currentItem.item_subtitle && (
+            <p className="text-sm text-muted-foreground truncate">{currentItem.item_subtitle}</p>
           )}
           <p className="text-2xl font-bold text-primary mt-2">
-            {currentItem.rating?.toFixed(1)}
+            {currentItem.avg_rating.toFixed(1)}
           </p>
+          <p className="text-xs text-muted-foreground">{currentItem.total_ratings} ratings</p>
         </div>
 
         {/* VS */}
@@ -268,36 +300,42 @@ export const HigherLowerGame = () => {
         </div>
 
         {/* Next Item */}
-        <div className={cn(
-          "flex-1 glass-card rounded-xl p-4 text-center transition-all",
-          showResult && (isCorrect ? "border-green-500" : "border-red-500")
-        )}>
+        <div
+          className={cn(
+            "flex-1 glass-card rounded-xl p-4 text-center transition-all",
+            showResult && (isCorrect ? "border-green-500" : "border-red-500")
+          )}
+        >
           <div className="aspect-square rounded-lg bg-secondary overflow-hidden mb-3">
-            {nextItem.coverUrl ? (
+            {nextItem.item_image ? (
               <img
-                src={nextItem.coverUrl}
-                alt={nextItem.name}
+                src={nextItem.item_image}
+                alt={nextItem.item_name}
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-4xl font-display font-bold text-muted-foreground/30">
-                {nextItem.name[0]?.toUpperCase()}
+                {nextItem.item_name[0]?.toUpperCase()}
               </div>
             )}
           </div>
-          <h3 className="font-display font-semibold truncate">{nextItem.name}</h3>
-          {nextItem.subtitle && (
-            <p className="text-sm text-muted-foreground truncate">{nextItem.subtitle}</p>
+          <h3 className="font-display font-semibold truncate">{nextItem.item_name}</h3>
+          {nextItem.item_subtitle && (
+            <p className="text-sm text-muted-foreground truncate">{nextItem.item_subtitle}</p>
           )}
-          {showResult && (
-            <p className={cn(
-              "text-2xl font-bold mt-2",
-              isCorrect ? "text-green-500" : "text-red-500"
-            )}>
-              {nextItem.rating?.toFixed(1)}
-            </p>
-          )}
-          {!showResult && (
+          {showResult ? (
+            <>
+              <p
+                className={cn(
+                  "text-2xl font-bold mt-2",
+                  isCorrect ? "text-green-500" : "text-red-500"
+                )}
+              >
+                {nextItem.avg_rating.toFixed(1)}
+              </p>
+              <p className="text-xs text-muted-foreground">{nextItem.total_ratings} ratings</p>
+            </>
+          ) : (
             <p className="text-2xl font-bold text-muted-foreground mt-2">?</p>
           )}
         </div>

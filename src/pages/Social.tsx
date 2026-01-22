@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, Trophy, Users, TrendingUp, Loader2 } from "lucide-react";
+import { Search, Trophy, Users, TrendingUp, Loader2, Lock, Info } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-
 interface LeaderboardUser {
   rank: number;
   id: string;
@@ -69,7 +68,7 @@ const Social = () => {
     },
   });
 
-  // Search users
+  // Search users - show ALL users including private ones
   const { data: searchResults, isLoading: searchLoading } = useQuery({
     queryKey: ["user-search", searchQuery],
     queryFn: async () => {
@@ -78,7 +77,6 @@ const Social = () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, username, avatar_url, is_private")
-        .eq("is_private", false)
         .ilike("username", `%${searchQuery}%`)
         .limit(20);
 
@@ -104,6 +102,15 @@ const Social = () => {
             </p>
           </div>
 
+          {/* Leaderboard explanation */}
+          {activeTab === "leaderboard" && (
+            <div className="flex items-center gap-2 p-3 mb-6 rounded-lg bg-primary/10 border border-primary/20">
+              <Info className="w-5 h-5 text-primary shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                The leaderboard displays users ranked by how many ratings they've submitted.
+              </p>
+            </div>
+          )}
           {/* Tabs */}
           <div className="flex gap-2 mb-8">
             <button
@@ -326,7 +333,15 @@ const Social = () => {
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="font-semibold">{user.username}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold">{user.username}</p>
+                        {user.is_private && (
+                          <Lock className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      {user.is_private && (
+                        <p className="text-xs text-muted-foreground">Private profile</p>
+                      )}
                     </div>
                     <TrendingUp className="w-5 h-5 text-muted-foreground" />
                   </Link>

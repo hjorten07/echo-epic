@@ -1,6 +1,8 @@
 // MusicBrainz API Service
 // API Documentation: https://musicbrainz.org/doc/MusicBrainz_API
 
+import { supabase } from "@/integrations/supabase/client";
+
 const BASE_URL = "https://musicbrainz.org/ws/2";
 const COVER_ART_URL = "https://coverartarchive.org";
 const USER_AGENT = "RateTheMusic/1.0.0 (https://ratethemusic.app)";
@@ -147,9 +149,10 @@ async function batchFetchWikipediaImages(names: string[]): Promise<Map<string, s
   return results;
 }
 
-// Search for artists
+// Search for artists (including custom artists from database)
 export async function searchArtists(query: string, limit = 25): Promise<SearchResult[]> {
   try {
+    // Search MusicBrainz artists
     const response = await rateLimitedFetch(
       `${BASE_URL}/artist?query=${encodeURIComponent(query)}&limit=${limit}&fmt=json`
     );
@@ -163,13 +166,31 @@ export async function searchArtists(query: string, limit = 25): Promise<SearchRe
     const names = artists.map((a: MusicBrainzArtist) => a.name);
     const images = await batchFetchWikipediaImages(names);
     
-    return artists.map((artist: MusicBrainzArtist) => ({
+    const mbResults: SearchResult[] = artists.map((artist: MusicBrainzArtist) => ({
       id: artist.id,
       type: "artist" as const,
       name: artist.name,
       subtitle: artist.disambiguation || artist.country || artist.type,
       imageUrl: images.get(artist.name) || undefined,
     }));
+
+    // Also search custom artists from database
+    const { data: customArtists } = await supabase
+      .from("custom_artists")
+      .select("*")
+      .ilike("name", `%${query}%`)
+      .limit(10);
+
+    const customResults: SearchResult[] = (customArtists || []).map((artist) => ({
+      id: `custom_${artist.id}`,
+      type: "artist" as const,
+      name: artist.name,
+      subtitle: artist.type || "Custom Artist",
+      imageUrl: artist.image_url || undefined,
+    }));
+
+    // Merge results, prioritizing custom artists at the top
+    return [...customResults, ...mbResults].slice(0, limit);
   } catch (error) {
     console.error("Error searching artists:", error);
     return [];

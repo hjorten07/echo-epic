@@ -18,6 +18,7 @@ import Song from "./pages/Song";
 import Admin from "./pages/Admin";
 import Games from "./pages/Games";
 import Messages from "./pages/Messages";
+import Conversations from "./pages/Conversations";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/album/:id" element={<Album />} />
               <Route path="/song/:id" element={<Song />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/messages" element={<Conversations />} />
               <Route path="/messages/:partnerId" element={<Messages />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

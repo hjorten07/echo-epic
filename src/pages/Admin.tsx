@@ -38,6 +38,7 @@ import {
   useUpdateReportStatus,
   useCreateCustomArtist,
   useCustomArtists,
+  useDeleteCustomArtist,
   useDeleteUser,
 } from "@/hooks/useAdmin";
 
@@ -64,6 +65,7 @@ const Admin = () => {
   const { data: customArtists } = useCustomArtists();
   const updateReportStatus = useUpdateReportStatus();
   const createCustomArtist = useCreateCustomArtist();
+  const deleteCustomArtist = useDeleteCustomArtist();
   const deleteUser = useDeleteUser();
 
   if (!isAdmin) {
@@ -438,7 +440,7 @@ const Admin = () => {
               {/* List of custom artists */}
               {customArtists && customArtists.length > 0 && (
                 <div className="mt-8">
-                  <h3 className="font-display text-lg font-bold mb-4">Custom Artists</h3>
+                  <h3 className="font-display text-lg font-bold mb-4">Custom Artists ({customArtists.length})</h3>
                   <div className="space-y-2">
                     {customArtists.map((artist) => (
                       <div key={artist.id} className="glass-card rounded-lg p-4 flex items-center gap-4">
@@ -464,6 +466,21 @@ const Admin = () => {
                         <span className="text-xs text-muted-foreground">
                           {format(new Date(artist.created_at), "MMM d, yyyy")}
                         </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            if (confirm(`Delete artist "${artist.name}"? This cannot be undone.`)) {
+                              deleteCustomArtist.mutate(artist.id, {
+                                onSuccess: () => toast.success("Artist deleted"),
+                                onError: () => toast.error("Failed to delete artist"),
+                              });
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>
