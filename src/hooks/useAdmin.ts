@@ -174,6 +174,24 @@ export const useCustomArtists = () => {
   });
 };
 
+export const useDeleteCustomArtist = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (artistId: string) => {
+      const { error } = await supabase
+        .from("custom_artists")
+        .delete()
+        .eq("id", artistId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["custom-artists"] });
+    },
+  });
+};
+
 export const useDeleteUser = () => {
   const queryClient = useQueryClient();
 
