@@ -97,6 +97,56 @@ export interface SearchResult {
   imageUrl?: string;
 }
 
+// Image cache to avoid refetching
+const imageCache = new Map<string, string | null>();
+
+// Batch fetch Wikipedia images for multiple names
+async function batchFetchWikipediaImages(names: string[]): Promise<Map<string, string | null>> {
+  const results = new Map<string, string | null>();
+  
+  // Check cache first
+  const uncachedNames = names.filter(name => {
+    if (imageCache.has(name)) {
+      results.set(name, imageCache.get(name) || null);
+      return false;
+    }
+    return true;
+  });
+  
+  if (uncachedNames.length === 0) return results;
+  
+  // Fetch images in parallel (limit to 5 concurrent)
+  const chunks: string[][] = [];
+  for (let i = 0; i < uncachedNames.length; i += 5) {
+    chunks.push(uncachedNames.slice(i, i + 5));
+  }
+  
+  for (const chunk of chunks) {
+    const promises = chunk.map(async (name) => {
+      try {
+        const response = await fetch(
+          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`,
+          { headers: { Accept: "application/json" } }
+        );
+        if (!response.ok) return { name, url: null };
+        const data = await response.json();
+        const url = data.thumbnail?.source || null;
+        return { name, url };
+      } catch {
+        return { name, url: null };
+      }
+    });
+    
+    const chunkResults = await Promise.all(promises);
+    chunkResults.forEach(({ name, url }) => {
+      imageCache.set(name, url);
+      results.set(name, url);
+    });
+  }
+  
+  return results;
+}
+
 // Search for artists
 export async function searchArtists(query: string, limit = 25): Promise<SearchResult[]> {
   try {
@@ -107,17 +157,71 @@ export async function searchArtists(query: string, limit = 25): Promise<SearchRe
     if (!response.ok) throw new Error("Failed to search artists");
     
     const data = await response.json();
+    const artists = (data.artists || []).slice(0, limit);
     
-    return (data.artists || []).map((artist: MusicBrainzArtist) => ({
+    // Batch fetch images for all artists
+    const names = artists.map((a: MusicBrainzArtist) => a.name);
+    const images = await batchFetchWikipediaImages(names);
+    
+    return artists.map((artist: MusicBrainzArtist) => ({
       id: artist.id,
       type: "artist" as const,
       name: artist.name,
       subtitle: artist.disambiguation || artist.country || artist.type,
+      imageUrl: images.get(artist.name) || undefined,
     }));
   } catch (error) {
     console.error("Error searching artists:", error);
     return [];
   }
+}
+
+// Batch fetch cover art for albums
+async function batchFetchCoverArt(ids: string[]): Promise<Map<string, string | null>> {
+  const results = new Map<string, string | null>();
+  
+  const uncachedIds = ids.filter(id => {
+    const cacheKey = `album_${id}`;
+    if (imageCache.has(cacheKey)) {
+      results.set(id, imageCache.get(cacheKey) || null);
+      return false;
+    }
+    return true;
+  });
+  
+  if (uncachedIds.length === 0) return results;
+  
+  // Fetch in parallel chunks of 5
+  const chunks: string[][] = [];
+  for (let i = 0; i < uncachedIds.length; i += 5) {
+    chunks.push(uncachedIds.slice(i, i + 5));
+  }
+  
+  for (const chunk of chunks) {
+    const promises = chunk.map(async (id) => {
+      try {
+        const response = await fetch(
+          `https://coverartarchive.org/release-group/${id}`,
+          { headers: { Accept: "application/json" } }
+        );
+        if (!response.ok) return { id, url: null };
+        const data = await response.json();
+        const front = data.images?.find((img: { front?: boolean }) => img.front);
+        const url = front?.thumbnails?.small || front?.thumbnails?.["250"] || front?.image || data.images?.[0]?.thumbnails?.small || null;
+        return { id, url };
+      } catch {
+        return { id, url: null };
+      }
+    });
+    
+    const chunkResults = await Promise.all(promises);
+    chunkResults.forEach(({ id, url }) => {
+      imageCache.set(`album_${id}`, url);
+      results.set(id, url);
+    });
+  }
+  
+  return results;
 }
 
 // Search for releases (albums)
@@ -130,12 +234,18 @@ export async function searchAlbums(query: string, limit = 25): Promise<SearchRes
     if (!response.ok) throw new Error("Failed to search albums");
     
     const data = await response.json();
+    const albums = (data["release-groups"] || []).slice(0, limit);
     
-    return (data["release-groups"] || []).map((rg: MusicBrainzReleaseGroup) => ({
+    // Batch fetch cover art
+    const ids = albums.map((rg: MusicBrainzReleaseGroup) => rg.id);
+    const images = await batchFetchCoverArt(ids);
+    
+    return albums.map((rg: MusicBrainzReleaseGroup) => ({
       id: rg.id,
       type: "album" as const,
       name: rg.title,
       subtitle: rg["artist-credit"]?.[0]?.artist?.name,
+      imageUrl: images.get(rg.id) || undefined,
     }));
   } catch (error) {
     console.error("Error searching albums:", error);
@@ -153,13 +263,22 @@ export async function searchSongs(query: string, limit = 25): Promise<SearchResu
     if (!response.ok) throw new Error("Failed to search songs");
     
     const data = await response.json();
+    const songs = (data.recordings || []).slice(0, limit);
     
-    return (data.recordings || []).map((rec: MusicBrainzRecording) => ({
-      id: rec.id,
-      type: "song" as const,
-      name: rec.title,
-      subtitle: rec["artist-credit"]?.[0]?.artist?.name,
-    }));
+    // Songs use artist images - fetch in parallel
+    const artistNames = [...new Set(songs.map((rec: MusicBrainzRecording) => rec["artist-credit"]?.[0]?.artist?.name).filter(Boolean))] as string[];
+    const images = await batchFetchWikipediaImages(artistNames);
+    
+    return songs.map((rec: MusicBrainzRecording) => {
+      const artistName = rec["artist-credit"]?.[0]?.artist?.name;
+      return {
+        id: rec.id,
+        type: "song" as const,
+        name: rec.title,
+        subtitle: artistName,
+        imageUrl: artistName ? images.get(artistName) || undefined : undefined,
+      };
+    });
   } catch (error) {
     console.error("Error searching songs:", error);
     return [];

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Navigate, Link } from "react-router-dom";
 import { 
   ArrowLeft, 
@@ -12,6 +12,8 @@ import {
   Check,
   X,
   Trash2,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -39,6 +41,8 @@ import {
   useDeleteUser,
 } from "@/hooks/useAdmin";
 
+import { supabase } from "@/integrations/supabase/client";
+
 const Admin = () => {
   const isAdmin = useIsAdmin();
   const [timeRange, setTimeRange] = useState("30");
@@ -50,6 +54,10 @@ const Admin = () => {
     type: "Artist",
     tags: "",
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: totalStats, isLoading: statsLoading } = useTotalStats();
   const { data: reports, isLoading: reportsLoading } = useReports();
@@ -57,6 +65,44 @@ const Admin = () => {
   const updateReportStatus = useUpdateReportStatus();
   const createCustomArtist = useCreateCustomArtist();
   const deleteUser = useDeleteUser();
+
+  if (!isAdmin) {
+    return <Navigate to="/settings" replace />;
+  }
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setNewArtist(prev => ({ ...prev, imageUrl: "" }));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${crypto.randomUUID()}.${fileExt}`;
+    const filePath = `artists/${fileName}`;
+
+    const { error } = await supabase.storage
+      .from('artist-images')
+      .upload(filePath, file);
+
+    if (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('artist-images')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
 
   if (!isAdmin) {
     return <Navigate to="/settings" replace />;
@@ -70,18 +116,34 @@ const Admin = () => {
     }
 
     try {
+      setIsUploadingImage(true);
+      let finalImageUrl = newArtist.imageUrl.trim() || undefined;
+
+      // Upload image if file is selected
+      if (imageFile) {
+        const uploadedUrl = await uploadImage(imageFile);
+        if (uploadedUrl) {
+          finalImageUrl = uploadedUrl;
+        }
+      }
+
       await createCustomArtist.mutateAsync({
         name: newArtist.name.trim(),
         bio: newArtist.bio.trim() || undefined,
-        imageUrl: newArtist.imageUrl.trim() || undefined,
+        imageUrl: finalImageUrl,
         country: newArtist.country.trim() || undefined,
         type: newArtist.type,
         tags: newArtist.tags ? newArtist.tags.split(",").map(t => t.trim()) : undefined,
       });
       toast.success("Artist created successfully!");
       setNewArtist({ name: "", bio: "", imageUrl: "", country: "", type: "Artist", tags: "" });
+      setImageFile(null);
+      setImagePreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       toast.error("Failed to create artist");
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -252,14 +314,80 @@ const Admin = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="artist-image">Image URL</Label>
-                  <Input
-                    id="artist-image"
-                    value={newArtist.imageUrl}
-                    onChange={(e) => setNewArtist(prev => ({ ...prev, imageUrl: e.target.value }))}
-                    placeholder="https://..."
-                    type="url"
-                  />
+                  <Label>Artist Image</Label>
+                  <div className="flex gap-4 items-start">
+                    {/* Image Preview */}
+                    <div className="w-24 h-24 rounded-lg bg-secondary flex items-center justify-center overflow-hidden shrink-0">
+                      {imagePreview ? (
+                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      ) : newArtist.imageUrl ? (
+                        <img src={newArtist.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 space-y-2">
+                      {/* File upload */}
+                      <div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageSelect}
+                          className="hidden"
+                          id="artist-image-upload"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload Image
+                        </Button>
+                      </div>
+                      
+                      {/* Or URL input */}
+                      <div className="relative">
+                        <span className="text-xs text-muted-foreground">Or enter URL:</span>
+                        <Input
+                          id="artist-image"
+                          value={newArtist.imageUrl}
+                          onChange={(e) => {
+                            setNewArtist(prev => ({ ...prev, imageUrl: e.target.value }));
+                            setImageFile(null);
+                            setImagePreview(null);
+                          }}
+                          placeholder="https://..."
+                          type="url"
+                          className="mt-1"
+                          disabled={!!imageFile}
+                        />
+                      </div>
+                      
+                      {imageFile && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground truncate">{imageFile.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setImageFile(null);
+                              setImagePreview(null);
+                              if (fileInputRef.current) fileInputRef.current.value = "";
+                            }}
+                            className="h-6 px-2"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -301,9 +429,9 @@ const Admin = () => {
                   />
                 </div>
 
-                <Button type="submit" className="w-full" disabled={createCustomArtist.isPending}>
-                  {createCustomArtist.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                  Create Artist
+                <Button type="submit" className="w-full" disabled={createCustomArtist.isPending || isUploadingImage}>
+                  {(createCustomArtist.isPending || isUploadingImage) && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                  {isUploadingImage ? "Uploading Image..." : "Create Artist"}
                 </Button>
               </form>
 
