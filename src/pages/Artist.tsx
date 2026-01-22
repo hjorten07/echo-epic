@@ -23,10 +23,19 @@ import {
   MusicBrainzArtist,
   MusicBrainzReleaseGroup,
 } from "@/lib/musicbrainz";
-import { useTopRatings } from "@/hooks/useRatings";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AlbumWithCover extends MusicBrainzReleaseGroup {
   coverUrl?: string;
+}
+
+interface TopRatedItem {
+  item_id: string;
+  item_type: string;
+  item_name: string;
+  item_image: string | null;
+  item_subtitle: string | null;
+  avg_rating: number;
 }
 
 const Artist = () => {
@@ -39,10 +48,8 @@ const Artist = () => {
   const [loadingAlbums, setLoadingAlbums] = useState(true);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [topFilter, setTopFilter] = useState<"songs" | "albums">("songs");
-
-  // Fetch top rated items for this artist
-  const { data: topSongs } = useTopRatings("song", 10);
-  const { data: topAlbums } = useTopRatings("album", 10);
+  const [artistTopSongs, setArtistTopSongs] = useState<TopRatedItem[]>([]);
+  const [artistTopAlbums, setArtistTopAlbums] = useState<TopRatedItem[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -60,6 +67,37 @@ const Artist = () => {
         ]);
         setBio(summary);
         setImageUrl(image);
+        
+        // Fetch top rated songs/albums by this artist from the database
+        const fetchArtistTopRatings = async () => {
+          // Fetch songs by this artist
+          const { data: songs } = await supabase
+            .from("item_ratings")
+            .select("*")
+            .eq("item_type", "song")
+            .ilike("item_subtitle", `%${artistData.name}%`)
+            .order("avg_rating", { ascending: false })
+            .limit(10);
+          
+          if (songs) {
+            setArtistTopSongs(songs as TopRatedItem[]);
+          }
+          
+          // Fetch albums by this artist
+          const { data: albumRatings } = await supabase
+            .from("item_ratings")
+            .select("*")
+            .eq("item_type", "album")
+            .ilike("item_subtitle", `%${artistData.name}%`)
+            .order("avg_rating", { ascending: false })
+            .limit(10);
+          
+          if (albumRatings) {
+            setArtistTopAlbums(albumRatings as TopRatedItem[]);
+          }
+        };
+        
+        fetchArtistTopRatings();
       }
 
       setLoading(false);
@@ -258,9 +296,9 @@ const Artist = () => {
             </div>
 
             <div className="glass-card rounded-xl overflow-hidden">
-              {(topFilter === "songs" ? topSongs : topAlbums)?.length ? (
+              {(topFilter === "songs" ? artistTopSongs : artistTopAlbums)?.length ? (
                 <div className="divide-y divide-border">
-                  {(topFilter === "songs" ? topSongs : topAlbums)?.slice(0, 10).map((item, index) => (
+                  {(topFilter === "songs" ? artistTopSongs : artistTopAlbums)?.slice(0, 10).map((item, index) => (
                     <Link
                       key={item.item_id}
                       to={`/${item.item_type}/${item.item_id}`}

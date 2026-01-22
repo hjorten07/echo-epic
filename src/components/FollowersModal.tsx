@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { X, Loader2, Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2, Lock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface User {
   id: string;
@@ -22,21 +22,43 @@ interface FollowersModalProps {
   type: "followers" | "following";
   isOpen: boolean;
   onClose: () => void;
+  isProfilePrivate?: boolean;
 }
 
-export const FollowersModal = ({ userId, type, isOpen, onClose }: FollowersModalProps) => {
+export const FollowersModal = ({ userId, type, isOpen, onClose, isProfilePrivate = false }: FollowersModalProps) => {
+  const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [canViewList, setCanViewList] = useState(true);
 
   useEffect(() => {
     if (!isOpen || !userId) return;
 
-    const fetchUsers = async () => {
+    const checkAccessAndFetch = async () => {
       setLoading(true);
+      
+      // For "following" list on private profiles, check if current user can view
+      if (type === "following" && isProfilePrivate && user?.id !== userId) {
+        // Check if current user follows this profile
+        const { data: followData } = await supabase
+          .from("follows")
+          .select("id")
+          .eq("follower_id", user?.id || "")
+          .eq("following_id", userId)
+          .maybeSingle();
+        
+        if (!followData) {
+          setCanViewList(false);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      setCanViewList(true);
+      
       try {
-        let query;
         if (type === "followers") {
-          // Get people who follow this user
+          // Get people who follow this user - everyone can see followers
           const { data } = await supabase
             .from("follows")
             .select(`
@@ -72,8 +94,8 @@ export const FollowersModal = ({ userId, type, isOpen, onClose }: FollowersModal
       setLoading(false);
     };
 
-    fetchUsers();
-  }, [isOpen, userId, type]);
+    checkAccessAndFetch();
+  }, [isOpen, userId, type, user?.id, isProfilePrivate]);
 
   return (
     <Dialog open={isOpen} onOpenChange={() => onClose()}>
@@ -88,6 +110,12 @@ export const FollowersModal = ({ userId, type, isOpen, onClose }: FollowersModal
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : !canViewList ? (
+            <div className="text-center py-12">
+              <Lock className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-muted-foreground">This list is private</p>
+              <p className="text-sm text-muted-foreground">Follow this user to see who they follow</p>
             </div>
           ) : users.length === 0 ? (
             <div className="text-center py-12">
