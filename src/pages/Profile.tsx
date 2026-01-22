@@ -456,7 +456,7 @@ const Profile = () => {
                 </div>
 
                 {/* Badges */}
-                <BadgesSection userId={displayUserId} />
+                <BadgesSection userId={displayUserId} canView={canViewProfile} />
               </>
             )}
           </div>
@@ -469,12 +469,14 @@ const Profile = () => {
         type="followers"
         isOpen={followersModalOpen}
         onClose={() => setFollowersModalOpen(false)}
+        isProfilePrivate={profileData?.is_private}
       />
       <FollowersModal
         userId={displayUserId}
         type="following"
         isOpen={followingModalOpen}
         onClose={() => setFollowingModalOpen(false)}
+        isProfilePrivate={profileData?.is_private}
       />
       {isOwnProfile && displayUserId && (
         <AllRatingsModal

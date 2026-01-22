@@ -14,9 +14,10 @@ import { toast } from "sonner";
 
 interface BadgesSectionProps {
   userId: string;
+  canView?: boolean;
 }
 
-export const BadgesSection = ({ userId }: BadgesSectionProps) => {
+export const BadgesSection = ({ userId, canView = true }: BadgesSectionProps) => {
   const { user } = useAuth();
   const { data: userBadges, isLoading } = useUserBadges(userId);
   const { data: streak } = useUserStreak(userId);
@@ -66,7 +67,7 @@ export const BadgesSection = ({ userId }: BadgesSectionProps) => {
     }
   };
 
-  if (isLoading || !userBadges || userBadges.length === 0) {
+  if (isLoading || !userBadges || userBadges.length === 0 || !canView) {
     return null;
   }
 

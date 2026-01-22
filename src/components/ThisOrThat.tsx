@@ -47,18 +47,18 @@ export const ThisOrThat = ({ isLoggedIn = false, onPlay }: ThisOrThatProps) => {
         const shuffled = filteredResults.sort(() => 0.5 - Math.random());
         const selected = shuffled.slice(0, 2);
         
-        // Fetch cover art for albums
-        if (selectedType === "album") {
-          const withCovers = await Promise.all(
-            selected.map(async (item) => {
+        // Fetch cover art for all types
+        const withCovers = await Promise.all(
+          selected.map(async (item) => {
+            // For albums and songs, try to get cover art
+            if (item.type === "album" || item.type === "song") {
               const coverUrl = await getCoverArt(item.id);
               return { ...item, coverUrl };
-            })
-          );
-          setOptions(withCovers);
-        } else {
-          setOptions(selected);
-        }
+            }
+            return item;
+          })
+        );
+        setOptions(withCovers);
       }
     } catch (error) {
       console.error("Error fetching options:", error);

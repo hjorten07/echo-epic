@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Palette, Lock, Bell, User, Eye, EyeOff, Check, Camera, Loader2, Shield, Plus } from "lucide-react";
+import { ArrowLeft, Palette, Lock, Bell, User, Eye, EyeOff, Check, Camera, Loader2, Shield, Plus, Minus } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -411,24 +411,26 @@ const Settings = () => {
                     <p className="text-sm font-medium">{t.name}</p>
                   </button>
                 ))}
-                
-                {/* More themes toggle */}
-                <button
-                  onClick={() => setShowMoreThemes(!showMoreThemes)}
-                  className="relative p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all flex flex-col items-center justify-center"
-                >
-                  <div className="flex gap-1 mb-3 blur-sm opacity-60">
-                    {extraThemes[0].colors.map((color, i) => (
-                      <div
-                        key={i}
-                        className="w-6 h-6 rounded-full"
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                  <Plus className="w-6 h-6 text-muted-foreground mb-1" />
-                  <p className="text-sm text-muted-foreground">{showMoreThemes ? "Less" : "More"}</p>
-                </button>
+
+                {/* More themes toggle - only show when collapsed */}
+                {!showMoreThemes && (
+                  <button
+                    onClick={() => setShowMoreThemes(true)}
+                    className="relative p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all flex flex-col items-center justify-center"
+                  >
+                    <div className="flex gap-1 mb-3 blur-sm opacity-60">
+                      {extraThemes[0].colors.map((color, i) => (
+                        <div
+                          key={i}
+                          className="w-6 h-6 rounded-full"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                    <Plus className="w-6 h-6 text-muted-foreground mb-1" />
+                    <p className="text-sm text-muted-foreground">More</p>
+                  </button>
+                )}
               </div>
 
               {/* Extra Themes */}
@@ -464,6 +466,17 @@ const Settings = () => {
                       <p className="text-sm font-medium">{t.name}</p>
                     </button>
                   ))}
+                  
+                  {/* Collapse button at the end */}
+                  <button
+                    onClick={() => setShowMoreThemes(false)}
+                    className="relative p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all flex flex-col items-center justify-center"
+                  >
+                    <div className="flex gap-1 mb-3 opacity-60">
+                      <Minus className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Less</p>
+                  </button>
                 </div>
               )}
             </section>
