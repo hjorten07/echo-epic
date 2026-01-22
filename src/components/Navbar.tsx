@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, User, Settings, LogOut, Menu, X, Music2, Home, Users, ChevronDown, TrendingUp, Gamepad2 } from "lucide-react";
+import { Search, User, Settings, LogOut, Menu, Music2, Home, Users, ChevronDown, TrendingUp, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,11 +13,11 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { MessagesDropdown } from "./MessagesDropdown";
+import { MobileMenu } from "./MobileMenu";
 import { cn } from "@/lib/utils";
 
 export const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, profile, signOut, loading } = useAuth();
@@ -176,59 +176,16 @@ export const Navbar = () => {
             )}
 
             {/* Mobile Menu Toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </Button>
+            <MobileMenu
+              trigger={
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              }
+            />
           </div>
         </div>
 
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border/50 animate-fade-in">
-            <form onSubmit={handleSearch} className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-secondary/50"
-                />
-              </div>
-            </form>
-            <div className="flex flex-col gap-2">
-              <Link
-                to="/"
-                className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-secondary transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <Home className="w-4 h-4" />
-                Home
-              </Link>
-              <Link
-                to="/top100"
-                className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-secondary transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Top 100
-              </Link>
-              <Link
-                to="/social"
-                className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-secondary transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <Users className="w-4 h-4" />
-                Social
-              </Link>
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   );
