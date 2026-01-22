@@ -7,7 +7,8 @@ import { StarRating } from "@/components/StarRating";
 import { BadgesSection } from "@/components/BadgesSection";
 import { FollowersModal } from "@/components/FollowersModal";
 import { AllRatingsModal } from "@/components/AllRatingsModal";
-import { Loader2, Calendar, Edit2, Check, X, Users, Plus, Lock } from "lucide-react";
+import { FollowRequestsSection } from "@/components/FollowRequestsSection";
+import { Loader2, Calendar, Edit2, Check, X, Users, Plus, Lock, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ const Profile = () => {
   const [followingModalOpen, setFollowingModalOpen] = useState(false);
   const [allRatingsModalOpen, setAllRatingsModalOpen] = useState(false);
   const [canViewProfile, setCanViewProfile] = useState(true);
+  const [isMutualFollower, setIsMutualFollower] = useState(false);
 
   const isOwnProfile = user?.id === userId || (!userId && !!user);
   const displayUserId = userId || user?.id;
@@ -110,6 +112,17 @@ const Profile = () => {
             .eq("status", "pending")
             .maybeSingle();
           setHasPendingRequest(!!requestData);
+        }
+        
+        // Check if mutual followers (for messaging)
+        if (following) {
+          const { data: reverseFollow } = await supabase
+            .from("follows")
+            .select("id")
+            .eq("follower_id", id)
+            .eq("following_id", user.id)
+            .maybeSingle();
+          setIsMutualFollower(!!reverseFollow);
         }
       }
 
@@ -364,17 +377,33 @@ const Profile = () => {
                     <span className="text-muted-foreground"> following</span>
                   </button>
                   {!isOwnProfile && user && (
-                    <Button
-                      size="sm"
-                      variant={isFollowing ? "secondary" : hasPendingRequest ? "outline" : "default"}
-                      onClick={handleFollow}
-                    >
-                      {isFollowing ? "Unfollow" : hasPendingRequest ? "Requested" : profileData.is_private ? "Request" : "Follow"}
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant={isFollowing ? "secondary" : hasPendingRequest ? "outline" : "default"}
+                        onClick={handleFollow}
+                      >
+                        {isFollowing ? "Unfollow" : hasPendingRequest ? "Requested" : profileData.is_private ? "Request" : "Follow"}
+                      </Button>
+                      {/* Message button - only show if mutual followers or public profile */}
+                      {(isMutualFollower || (!profileData.is_private && isFollowing)) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/messages/${displayUserId}`)}
+                        >
+                          <MessageCircle className="w-4 h-4 mr-1" />
+                          Message
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
             </div>
+
+            {/* Follow Requests Section - only on own profile */}
+            {isOwnProfile && <FollowRequestsSection />}
 
             {canViewProfile && (
               <>

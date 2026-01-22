@@ -41,6 +41,7 @@ interface TopRatedItem {
 const Artist = () => {
   const { id } = useParams<{ id: string }>();
   const [artist, setArtist] = useState<MusicBrainzArtist | null>(null);
+  const [customArtist, setCustomArtist] = useState<any>(null);
   const [albums, setAlbums] = useState<AlbumWithCover[]>([]);
   const [bio, setBio] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -56,6 +57,51 @@ const Artist = () => {
 
     const fetchArtist = async () => {
       setLoading(true);
+      
+      // Check if this is a custom artist
+      if (id.startsWith("custom_")) {
+        const customId = id.replace("custom_", "");
+        const { data: customData } = await supabase
+          .from("custom_artists")
+          .select("*")
+          .eq("id", customId)
+          .maybeSingle();
+        
+        if (customData) {
+          setCustomArtist(customData);
+          setBio(customData.bio);
+          setImageUrl(customData.image_url);
+          setLoadingAlbums(false);
+          
+          // Fetch top rated items by this custom artist
+          const fetchArtistTopRatings = async () => {
+            const { data: songs } = await supabase
+              .from("item_ratings")
+              .select("*")
+              .eq("item_type", "song")
+              .ilike("item_subtitle", `%${customData.name}%`)
+              .order("avg_rating", { ascending: false })
+              .limit(10);
+            
+            if (songs) setArtistTopSongs(songs as TopRatedItem[]);
+            
+            const { data: albumRatings } = await supabase
+              .from("item_ratings")
+              .select("*")
+              .eq("item_type", "album")
+              .ilike("item_subtitle", `%${customData.name}%`)
+              .order("avg_rating", { ascending: false })
+              .limit(10);
+            
+            if (albumRatings) setArtistTopAlbums(albumRatings as TopRatedItem[]);
+          };
+          
+          fetchArtistTopRatings();
+          setLoading(false);
+          return;
+        }
+      }
+      
       const artistData = await getArtist(id);
       setArtist(artistData);
 
@@ -147,6 +193,117 @@ const Artist = () => {
         <div className="flex items-center justify-center min-h-[60vh]">
           <VinylLoader />
         </div>
+      </div>
+    );
+  }
+
+  // For custom artists, render a custom profile
+  if (customArtist) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="pt-24 pb-20">
+          <div className="container mx-auto px-4">
+            {/* Artist Header */}
+            <div className="flex flex-col md:flex-row gap-8 mb-12">
+              <div className="shrink-0">
+                <div className="w-64 h-64 rounded-2xl overflow-hidden bg-secondary mx-auto md:mx-0">
+                  {imageUrl ? (
+                    <img src={imageUrl} alt={customArtist.name} className="w-full h-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-6xl font-display font-bold text-muted-foreground/30">
+                      {customArtist.name[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-1 text-center md:text-left">
+                <span className="inline-block px-3 py-1 text-sm bg-primary/10 text-primary rounded-full mb-3">
+                  {customArtist.type || "Artist"}
+                </span>
+                <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">{customArtist.name}</h1>
+
+                <div className="flex flex-wrap items-center gap-4 justify-center md:justify-start text-muted-foreground mb-6">
+                  {customArtist.country && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {customArtist.country}
+                    </span>
+                  )}
+                </div>
+
+                <div className="mb-6">
+                  <ItemRatingSection
+                    itemType="artist"
+                    itemId={id!}
+                    itemName={customArtist.name}
+                    itemImage={imageUrl || undefined}
+                  />
+                </div>
+
+                {customArtist.tags && customArtist.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                    {customArtist.tags.slice(0, 8).map((tag: string) => (
+                      <span key={tag} className="px-3 py-1 text-sm bg-secondary rounded-full">{tag}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {bio && (
+              <section className="mb-12">
+                <h2 className="font-display text-2xl font-bold mb-4">About</h2>
+                <div className="glass-card rounded-xl p-6">
+                  <p className="text-muted-foreground leading-relaxed">{bio}</p>
+                </div>
+              </section>
+            )}
+
+            {/* Top 10 Section */}
+            <section className="mb-12">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <Trophy className="w-6 h-6 text-primary" />
+                  <h2 className="font-display text-2xl font-bold">Top 10</h2>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant={topFilter === "songs" ? "default" : "outline"} size="sm" onClick={() => setTopFilter("songs")} className={topFilter === "songs" ? "bg-primary text-primary-foreground" : ""}>Songs</Button>
+                  <Button variant={topFilter === "albums" ? "default" : "outline"} size="sm" onClick={() => setTopFilter("albums")} className={topFilter === "albums" ? "bg-primary text-primary-foreground" : ""}>Albums</Button>
+                </div>
+              </div>
+
+              <div className="glass-card rounded-xl overflow-hidden">
+                {(topFilter === "songs" ? artistTopSongs : artistTopAlbums)?.length ? (
+                  <div className="divide-y divide-border">
+                    {(topFilter === "songs" ? artistTopSongs : artistTopAlbums)?.slice(0, 10).map((item, index) => (
+                      <Link key={item.item_id} to={`/${item.item_type}/${item.item_id}`} className="flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors">
+                        <span className={cn("w-8 text-center font-bold", index < 3 ? "text-primary" : "text-muted-foreground")}>{index + 1}</span>
+                        <div className="w-12 h-12 rounded-lg bg-secondary overflow-hidden shrink-0">
+                          {item.item_image ? (
+                            <img src={item.item_image} alt={item.item_name} className="w-full h-full object-cover" loading="lazy" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center"><Disc3 className="w-6 h-6 text-muted-foreground/30" /></div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{item.item_name}</p>
+                          {item.item_subtitle && <p className="text-sm text-muted-foreground truncate">{item.item_subtitle}</p>}
+                        </div>
+                        <span className="font-semibold text-primary">{Number(item.avg_rating).toFixed(1)}</span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-muted-foreground">No ratings yet. Be the first to rate!</div>
+                )}
+              </div>
+            </section>
+
+            <CommentSection itemType="artist" itemId={id!} />
+          </div>
+        </main>
       </div>
     );
   }

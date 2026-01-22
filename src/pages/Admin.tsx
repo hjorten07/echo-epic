@@ -212,10 +212,14 @@ const Admin = () => {
           </div>
 
           <Tabs defaultValue="analytics" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4 max-w-lg">
+            <TabsList className="grid w-full grid-cols-5 max-w-xl">
               <TabsTrigger value="analytics" className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
                 Analytics
+              </TabsTrigger>
+              <TabsTrigger value="data" className="flex items-center gap-2">
+                <Eye className="w-4 h-4" />
+                Data
               </TabsTrigger>
               <TabsTrigger value="create" className="flex items-center gap-2">
                 <Plus className="w-4 h-4" />
@@ -298,6 +302,64 @@ const Admin = () => {
               <div className="glass-card rounded-xl p-6 h-64 flex items-center justify-center">
                 <p className="text-muted-foreground">
                   Analytics charts will populate as usage data is collected
+                </p>
+              </div>
+            </TabsContent>
+
+            {/* Data Tab */}
+            <TabsContent value="data" className="space-y-6">
+              <h2 className="font-display text-xl font-bold">Platform Data</h2>
+              <p className="text-muted-foreground">
+                Overview of content in the platform
+              </p>
+
+              <div className="grid sm:grid-cols-3 gap-6">
+                <div className="glass-card rounded-xl p-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-primary" />
+                    </div>
+                    <span className="text-muted-foreground">Artists</span>
+                  </div>
+                  <p className="font-display text-3xl font-bold">
+                    {customArtists?.length || 0}
+                    <span className="text-sm font-normal text-muted-foreground ml-2">custom</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">+ MusicBrainz artists via search</p>
+                </div>
+
+                <div className="glass-card rounded-xl p-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Star className="w-5 h-5 text-primary" />
+                    </div>
+                    <span className="text-muted-foreground">Rated Items</span>
+                  </div>
+                  <p className="font-display text-3xl font-bold">
+                    {totalStats?.totalRatings?.toLocaleString() || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Total ratings across all items</p>
+                </div>
+
+                <div className="glass-card rounded-xl p-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-primary" />
+                    </div>
+                    <span className="text-muted-foreground">Users</span>
+                  </div>
+                  <p className="font-display text-3xl font-bold">
+                    {totalStats?.totalUsers?.toLocaleString() || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Registered users</p>
+                </div>
+              </div>
+
+              <div className="glass-card rounded-xl p-6">
+                <p className="text-muted-foreground text-center">
+                  Songs, albums, and artists are sourced from MusicBrainz API on-demand.
+                  <br />
+                  Custom artists created by admins: <strong>{customArtists?.length || 0}</strong>
                 </p>
               </div>
             </TabsContent>
