@@ -14,6 +14,7 @@ import {
   Trash2,
   Upload,
   Image as ImageIcon,
+  MessageSquare,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ import {
   useDeleteCustomArtist,
   useDeleteUser,
 } from "@/hooks/useAdmin";
+import { useSuggestions, useUpdateSuggestionStatus } from "@/hooks/useSuggestions";
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -63,7 +65,9 @@ const Admin = () => {
   const { data: totalStats, isLoading: statsLoading } = useTotalStats();
   const { data: reports, isLoading: reportsLoading } = useReports();
   const { data: customArtists } = useCustomArtists();
+  const { data: suggestions, isLoading: suggestionsLoading } = useSuggestions();
   const updateReportStatus = useUpdateReportStatus();
+  const updateSuggestionStatus = useUpdateSuggestionStatus();
   const createCustomArtist = useCreateCustomArtist();
   const deleteCustomArtist = useDeleteCustomArtist();
   const deleteUser = useDeleteUser();
@@ -171,6 +175,15 @@ const Admin = () => {
     }
   };
 
+  const handleSuggestionAction = async (suggestionId: string, status: string) => {
+    try {
+      await updateSuggestionStatus.mutateAsync({ id: suggestionId, status });
+      toast.success(`Suggestion ${status}`);
+    } catch (error) {
+      toast.error("Failed to update suggestion");
+    }
+  };
+
   const timeRangeOptions = [
     { value: "30", label: "Past 30 Days" },
     { value: "60", label: "Past 60 Days" },
@@ -199,7 +212,7 @@ const Admin = () => {
           </div>
 
           <Tabs defaultValue="analytics" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 max-w-md">
+            <TabsList className="grid w-full grid-cols-4 max-w-lg">
               <TabsTrigger value="analytics" className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
                 Analytics
@@ -211,6 +224,10 @@ const Admin = () => {
               <TabsTrigger value="reports" className="flex items-center gap-2">
                 <Flag className="w-4 h-4" />
                 Reports
+              </TabsTrigger>
+              <TabsTrigger value="suggestions" className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Feedback
               </TabsTrigger>
             </TabsList>
 
@@ -580,6 +597,100 @@ const Admin = () => {
                 <div className="glass-card rounded-xl p-8 text-center">
                   <Flag className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
                   <p className="text-muted-foreground">No reports yet</p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Suggestions Tab */}
+            <TabsContent value="suggestions" className="space-y-6">
+              <h2 className="font-display text-xl font-bold">User Feedback</h2>
+              <p className="text-muted-foreground">
+                View and manage feedback submitted by users
+              </p>
+
+              {suggestionsLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : suggestions && suggestions.length > 0 ? (
+                <div className="space-y-4">
+                  {suggestions.map((suggestion: any) => (
+                    <div
+                      key={suggestion.id}
+                      className={cn(
+                        "glass-card rounded-xl p-6",
+                        suggestion.status === "pending" && "border-l-4 border-l-primary"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "px-2 py-0.5 text-xs font-medium rounded-full",
+                              suggestion.status === "pending" && "bg-primary/10 text-primary",
+                              suggestion.status === "reviewed" && "bg-yellow-500/10 text-yellow-500",
+                              suggestion.status === "resolved" && "bg-green-500/10 text-green-500",
+                              suggestion.status === "dismissed" && "bg-muted text-muted-foreground"
+                            )}>
+                              {suggestion.status}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(suggestion.created_at), "MMM d, yyyy h:mm a")}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {suggestion.profiles?.avatar_url ? (
+                              <img
+                                src={suggestion.profiles.avatar_url}
+                                alt={suggestion.profiles.username}
+                                className="w-6 h-6 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center">
+                                <span className="text-xs font-bold">
+                                  {suggestion.profiles?.username?.[0]?.toUpperCase() || "?"}
+                                </span>
+                              </div>
+                            )}
+                            <span className="font-medium text-sm">
+                              {suggestion.profiles?.username || "Unknown User"}
+                            </span>
+                          </div>
+
+                          <div className="bg-secondary/50 p-3 rounded-lg">
+                            <p className="text-sm">{suggestion.content}</p>
+                          </div>
+                        </div>
+
+                        {suggestion.status === "pending" && (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSuggestionAction(suggestion.id, "dismissed")}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Dismiss
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSuggestionAction(suggestion.id, "resolved")}
+                            >
+                              <Check className="w-4 h-4 mr-1" />
+                              Done
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="glass-card rounded-xl p-8 text-center">
+                  <MessageSquare className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-muted-foreground">No feedback yet</p>
                 </div>
               )}
             </TabsContent>
