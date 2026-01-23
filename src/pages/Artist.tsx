@@ -21,6 +21,7 @@ import {
   MusicBrainzArtist,
   MusicBrainzReleaseGroup,
 } from "@/lib/musicbrainz";
+import { getWikipediaData } from "@/lib/wikipedia";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AlbumWithCover extends MusicBrainzReleaseGroup {
@@ -104,10 +105,16 @@ const Artist = () => {
       setArtist(artistData);
 
       if (artistData) {
-        // No external bios - only MusicBrainz core data (CC0)
-        // Use the artist's disambiguation as a brief description if available
-        if (artistData.disambiguation) {
+        // Fetch bio and image from Wikipedia
+        const wikiData = await getWikipediaData(artistData.name);
+        if (wikiData.bio) {
+          setBio(wikiData.bio);
+        } else if (artistData.disambiguation) {
+          // Fallback to MusicBrainz disambiguation
           setBio(artistData.disambiguation);
+        }
+        if (wikiData.imageUrl) {
+          setImageUrl(wikiData.imageUrl);
         }
         
         // Fetch top rated songs/albums by this artist from the database
@@ -400,14 +407,14 @@ const Artist = () => {
             </div>
           </div>
 
-          {/* Bio - from MusicBrainz disambiguation (CC0) */}
+          {/* Bio - from Wikipedia */}
           {bio && (
             <section className="mb-12">
               <h2 className="font-display text-2xl font-bold mb-4">About</h2>
               <div className="glass-card rounded-xl p-6">
                 <p className="text-muted-foreground leading-relaxed">{bio}</p>
                 <p className="text-xs text-muted-foreground/60 mt-4">
-                  Source: MusicBrainz (CC0)
+                  Source: Wikipedia
                 </p>
               </div>
             </section>
