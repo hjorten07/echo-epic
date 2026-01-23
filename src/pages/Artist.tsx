@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Disc3, Calendar, MapPin, ExternalLink, Loader2, ArrowUpDown, Trophy } from "lucide-react";
+import { Disc3, Calendar, MapPin, Loader2, ArrowUpDown, Trophy } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { VinylLoader } from "@/components/VinylLoader";
 import { ItemRatingSection } from "@/components/ItemRatingSection";
@@ -17,8 +17,6 @@ import { cn } from "@/lib/utils";
 import {
   getArtist,
   getArtistReleaseGroups,
-  getWikipediaSummary,
-  getWikipediaImage,
   getCoverArt,
   MusicBrainzArtist,
   MusicBrainzReleaseGroup,
@@ -106,13 +104,11 @@ const Artist = () => {
       setArtist(artistData);
 
       if (artistData) {
-        // Fetch bio and image from Wikipedia
-        const [summary, image] = await Promise.all([
-          getWikipediaSummary(artistData.name),
-          getWikipediaImage(artistData.name),
-        ]);
-        setBio(summary);
-        setImageUrl(image);
+        // No external bios - only MusicBrainz core data (CC0)
+        // Use the artist's disambiguation as a brief description if available
+        if (artistData.disambiguation) {
+          setBio(artistData.disambiguation);
+        }
         
         // Fetch top rated songs/albums by this artist from the database
         const fetchArtistTopRatings = async () => {
@@ -404,22 +400,14 @@ const Artist = () => {
             </div>
           </div>
 
-          {/* Bio */}
+          {/* Bio - from MusicBrainz disambiguation (CC0) */}
           {bio && (
             <section className="mb-12">
               <h2 className="font-display text-2xl font-bold mb-4">About</h2>
               <div className="glass-card rounded-xl p-6">
                 <p className="text-muted-foreground leading-relaxed">{bio}</p>
-                <p className="text-xs text-muted-foreground/60 mt-4 flex items-center gap-1">
-                  Source:{" "}
-                  <a
-                    href={`https://en.wikipedia.org/wiki/${encodeURIComponent(artist.name)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline inline-flex items-center gap-1"
-                  >
-                    Wikipedia <ExternalLink className="w-3 h-3" />
-                  </a>
+                <p className="text-xs text-muted-foreground/60 mt-4">
+                  Source: MusicBrainz (CC0)
                 </p>
               </div>
             </section>

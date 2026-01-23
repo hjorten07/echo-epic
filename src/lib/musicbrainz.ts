@@ -1,7 +1,9 @@
-// MusicBrainz API Service
+// MusicBrainz API Service - CC0 Core Data Only
 // API Documentation: https://musicbrainz.org/doc/MusicBrainz_API
+// Cover Art Archive: https://coverartarchive.org (also CC0)
 
 import { supabase } from "@/integrations/supabase/client";
+import { batchGetRecordingPopularity, sortByPopularity } from "./listenbrainz";
 
 const BASE_URL = "https://musicbrainz.org/ws/2";
 const COVER_ART_URL = "https://coverartarchive.org";
@@ -42,6 +44,7 @@ export interface MusicBrainzArtist {
   };
   disambiguation?: string;
   tags?: Array<{ name: string; count: number }>;
+  annotation?: string;
 }
 
 export interface MusicBrainzRelease {
@@ -79,6 +82,7 @@ export interface MusicBrainzRecording {
     artist: MusicBrainzArtist;
   }>;
   releases?: MusicBrainzRelease[];
+  tags?: Array<{ name: string; count: number }>;
 }
 
 export interface MusicBrainzReleaseGroup {
@@ -89,6 +93,8 @@ export interface MusicBrainzReleaseGroup {
   "artist-credit"?: Array<{
     artist: MusicBrainzArtist;
   }>;
+  tags?: Array<{ name: string; count: number }>;
+  annotation?: string;
 }
 
 export interface SearchResult {
@@ -97,52 +103,54 @@ export interface SearchResult {
   name: string;
   subtitle?: string;
   imageUrl?: string;
+  popularity?: number;
 }
 
-// Image cache to avoid refetching
+// Image cache for cover art only
 const imageCache = new Map<string, string | null>();
 
-// Batch fetch Wikipedia images for multiple names
-async function batchFetchWikipediaImages(names: string[]): Promise<Map<string, string | null>> {
+// Batch fetch cover art for albums from Cover Art Archive (CC0)
+async function batchFetchCoverArt(ids: string[]): Promise<Map<string, string | null>> {
   const results = new Map<string, string | null>();
   
-  // Check cache first
-  const uncachedNames = names.filter(name => {
-    if (imageCache.has(name)) {
-      results.set(name, imageCache.get(name) || null);
+  const uncachedIds = ids.filter(id => {
+    const cacheKey = `album_${id}`;
+    if (imageCache.has(cacheKey)) {
+      results.set(id, imageCache.get(cacheKey) || null);
       return false;
     }
     return true;
   });
   
-  if (uncachedNames.length === 0) return results;
+  if (uncachedIds.length === 0) return results;
   
-  // Fetch images in parallel (limit to 5 concurrent)
+  // Fetch in parallel chunks of 5
   const chunks: string[][] = [];
-  for (let i = 0; i < uncachedNames.length; i += 5) {
-    chunks.push(uncachedNames.slice(i, i + 5));
+  for (let i = 0; i < uncachedIds.length; i += 5) {
+    chunks.push(uncachedIds.slice(i, i + 5));
   }
   
   for (const chunk of chunks) {
-    const promises = chunk.map(async (name) => {
+    const promises = chunk.map(async (id) => {
       try {
         const response = await fetch(
-          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`,
+          `${COVER_ART_URL}/release-group/${id}`,
           { headers: { Accept: "application/json" } }
         );
-        if (!response.ok) return { name, url: null };
+        if (!response.ok) return { id, url: null };
         const data = await response.json();
-        const url = data.thumbnail?.source || null;
-        return { name, url };
+        const front = data.images?.find((img: { front?: boolean }) => img.front);
+        const url = front?.thumbnails?.small || front?.thumbnails?.["250"] || front?.image || data.images?.[0]?.thumbnails?.small || null;
+        return { id, url };
       } catch {
-        return { name, url: null };
+        return { id, url: null };
       }
     });
     
     const chunkResults = await Promise.all(promises);
-    chunkResults.forEach(({ name, url }) => {
-      imageCache.set(name, url);
-      results.set(name, url);
+    chunkResults.forEach(({ id, url }) => {
+      imageCache.set(`album_${id}`, url);
+      results.set(id, url);
     });
   }
   
@@ -162,16 +170,12 @@ export async function searchArtists(query: string, limit = 25): Promise<SearchRe
     const data = await response.json();
     const artists = (data.artists || []).slice(0, limit);
     
-    // Batch fetch images for all artists
-    const names = artists.map((a: MusicBrainzArtist) => a.name);
-    const images = await batchFetchWikipediaImages(names);
-    
     const mbResults: SearchResult[] = artists.map((artist: MusicBrainzArtist) => ({
       id: artist.id,
       type: "artist" as const,
       name: artist.name,
       subtitle: artist.disambiguation || artist.country || artist.type,
-      imageUrl: images.get(artist.name) || undefined,
+      imageUrl: undefined, // No images for artists (CC0 compliance)
     }));
 
     // Also search custom artists from database
@@ -197,55 +201,7 @@ export async function searchArtists(query: string, limit = 25): Promise<SearchRe
   }
 }
 
-// Batch fetch cover art for albums
-async function batchFetchCoverArt(ids: string[]): Promise<Map<string, string | null>> {
-  const results = new Map<string, string | null>();
-  
-  const uncachedIds = ids.filter(id => {
-    const cacheKey = `album_${id}`;
-    if (imageCache.has(cacheKey)) {
-      results.set(id, imageCache.get(cacheKey) || null);
-      return false;
-    }
-    return true;
-  });
-  
-  if (uncachedIds.length === 0) return results;
-  
-  // Fetch in parallel chunks of 5
-  const chunks: string[][] = [];
-  for (let i = 0; i < uncachedIds.length; i += 5) {
-    chunks.push(uncachedIds.slice(i, i + 5));
-  }
-  
-  for (const chunk of chunks) {
-    const promises = chunk.map(async (id) => {
-      try {
-        const response = await fetch(
-          `https://coverartarchive.org/release-group/${id}`,
-          { headers: { Accept: "application/json" } }
-        );
-        if (!response.ok) return { id, url: null };
-        const data = await response.json();
-        const front = data.images?.find((img: { front?: boolean }) => img.front);
-        const url = front?.thumbnails?.small || front?.thumbnails?.["250"] || front?.image || data.images?.[0]?.thumbnails?.small || null;
-        return { id, url };
-      } catch {
-        return { id, url: null };
-      }
-    });
-    
-    const chunkResults = await Promise.all(promises);
-    chunkResults.forEach(({ id, url }) => {
-      imageCache.set(`album_${id}`, url);
-      results.set(id, url);
-    });
-  }
-  
-  return results;
-}
-
-// Search for releases (albums)
+// Search for releases (albums) - sorted by ListenBrainz popularity
 export async function searchAlbums(query: string, limit = 25): Promise<SearchResult[]> {
   try {
     const response = await rateLimitedFetch(
@@ -257,7 +213,7 @@ export async function searchAlbums(query: string, limit = 25): Promise<SearchRes
     const data = await response.json();
     const albums = (data["release-groups"] || []).slice(0, limit);
     
-    // Batch fetch cover art
+    // Batch fetch cover art from Cover Art Archive (CC0)
     const ids = albums.map((rg: MusicBrainzReleaseGroup) => rg.id);
     const images = await batchFetchCoverArt(ids);
     
@@ -274,7 +230,7 @@ export async function searchAlbums(query: string, limit = 25): Promise<SearchRes
   }
 }
 
-// Search for recordings (songs)
+// Search for recordings (songs) - sorted by ListenBrainz popularity
 export async function searchSongs(query: string, limit = 25): Promise<SearchResult[]> {
   try {
     const response = await rateLimitedFetch(
@@ -286,20 +242,26 @@ export async function searchSongs(query: string, limit = 25): Promise<SearchResu
     const data = await response.json();
     const songs = (data.recordings || []).slice(0, limit);
     
-    // Songs use artist images - fetch in parallel
-    const artistNames = [...new Set(songs.map((rec: MusicBrainzRecording) => rec["artist-credit"]?.[0]?.artist?.name).filter(Boolean))] as string[];
-    const images = await batchFetchWikipediaImages(artistNames);
+    // Get recording IDs for popularity lookup
+    const recordingIds = songs.map((rec: MusicBrainzRecording) => rec.id);
     
-    return songs.map((rec: MusicBrainzRecording) => {
+    // Fetch popularity from ListenBrainz
+    const popularityMap = await batchGetRecordingPopularity(recordingIds);
+    
+    const results: SearchResult[] = songs.map((rec: MusicBrainzRecording) => {
       const artistName = rec["artist-credit"]?.[0]?.artist?.name;
       return {
         id: rec.id,
         type: "song" as const,
         name: rec.title,
         subtitle: artistName,
-        imageUrl: artistName ? images.get(artistName) || undefined : undefined,
+        imageUrl: undefined, // No images for songs without album context
+        popularity: popularityMap.get(rec.id) || 0,
       };
     });
+    
+    // Sort by popularity (most popular first)
+    return sortByPopularity(results, popularityMap);
   } catch (error) {
     console.error("Error searching songs:", error);
     return [];
@@ -332,7 +294,7 @@ export async function searchAll(query: string, limit = 10): Promise<SearchResult
   }
 }
 
-// Get artist details
+// Get artist details (CC0 core data only)
 export async function getArtist(id: string): Promise<MusicBrainzArtist | null> {
   try {
     const response = await rateLimitedFetch(
@@ -414,7 +376,7 @@ export async function getRecording(id: string): Promise<MusicBrainzRecording | n
   }
 }
 
-// Get cover art for a release group
+// Get cover art for a release group (CC0 from Cover Art Archive)
 export async function getCoverArt(releaseGroupId: string): Promise<string | null> {
   try {
     const response = await fetch(
@@ -427,40 +389,6 @@ export async function getCoverArt(releaseGroupId: string): Promise<string | null
     const data = await response.json();
     const front = data.images?.find((img: { front?: boolean }) => img.front);
     return front?.thumbnails?.small || front?.image || data.images?.[0]?.thumbnails?.small || null;
-  } catch {
-    return null;
-  }
-}
-
-// Get Wikipedia summary for an artist
-export async function getWikipediaSummary(artistName: string): Promise<string | null> {
-  try {
-    const response = await fetch(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(artistName)}`,
-      { headers: { Accept: "application/json" } }
-    );
-    
-    if (!response.ok) return null;
-    
-    const data = await response.json();
-    return data.extract || null;
-  } catch {
-    return null;
-  }
-}
-
-// Get Wikipedia image
-export async function getWikipediaImage(name: string): Promise<string | null> {
-  try {
-    const response = await fetch(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`,
-      { headers: { Accept: "application/json" } }
-    );
-    
-    if (!response.ok) return null;
-    
-    const data = await response.json();
-    return data.thumbnail?.source || data.originalimage?.source || null;
   } catch {
     return null;
   }
