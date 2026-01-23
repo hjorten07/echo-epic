@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Clock, Calendar, ExternalLink, Loader2, Music2 } from "lucide-react";
+import { Clock, Calendar, Loader2, Music2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { VinylLoader } from "@/components/VinylLoader";
 import { ItemRatingSection } from "@/components/ItemRatingSection";
@@ -9,7 +9,6 @@ import {
   getReleaseGroup,
   getReleasesForGroup,
   getCoverArt,
-  getWikipediaSummary,
   formatDuration,
   MusicBrainzReleaseGroup,
 } from "@/lib/musicbrainz";
@@ -43,18 +42,8 @@ const Album = () => {
       setAlbum(albumData);
       setCoverUrl(cover);
 
-      if (albumData) {
-        const artistName = albumData["artist-credit"]?.[0]?.artist?.name;
-        if (artistName) {
-          const summary = await getWikipediaSummary(`${albumData.title} (album)`);
-          if (!summary) {
-            const artistSummary = await getWikipediaSummary(artistName);
-            setBio(artistSummary);
-          } else {
-            setBio(summary);
-          }
-        }
-      }
+      // No external bios - only MusicBrainz core data (CC0)
+      // Use album tags as genre info if available
 
       setLoading(false);
     };
@@ -199,27 +188,6 @@ const Album = () => {
               </div>
             </div>
           </div>
-
-          {/* Bio */}
-          {bio && (
-            <section className="mb-12">
-              <h2 className="font-display text-2xl font-bold mb-4">About</h2>
-              <div className="glass-card rounded-xl p-6">
-                <p className="text-muted-foreground leading-relaxed">{bio}</p>
-                <p className="text-xs text-muted-foreground/60 mt-4 flex items-center gap-1">
-                  Source:{" "}
-                  <a
-                    href={`https://en.wikipedia.org/wiki/${encodeURIComponent(album.title)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline inline-flex items-center gap-1"
-                  >
-                    Wikipedia <ExternalLink className="w-3 h-3" />
-                  </a>
-                </p>
-              </div>
-            </section>
-          )}
 
           {/* Track List */}
           <section className="mb-12">

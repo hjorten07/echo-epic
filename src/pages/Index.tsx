@@ -207,7 +207,7 @@ const Index = () => {
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
           <p>&copy; 2024 RateTheMusic. All rights reserved.</p>
           <p className="mt-2">
-            Powered by MusicBrainz, Wikipedia &amp; Wikipedia Commons
+            Powered by MusicBrainz (CC0), Cover Art Archive (CC0) &amp; ListenBrainz
           </p>
         </div>
       </footer>
