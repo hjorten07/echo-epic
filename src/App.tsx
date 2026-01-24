@@ -20,6 +20,8 @@ import Games from "./pages/Games";
 import Messages from "./pages/Messages";
 import Conversations from "./pages/Conversations";
 import Recommendations from "./pages/Recommendations";
+import Playlists from "./pages/Playlists";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +56,8 @@ const App = () => (
               <Route path="/games" element={<Games />} />
               <Route path="/top100" element={<Top100 />} />
               <Route path="/recommendations" element={<Recommendations />} />
+              <Route path="/playlists" element={<Playlists />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="/artist/:id" element={<Artist />} />
               <Route path="/album/:id" element={<Album />} />
               <Route path="/song/:id" element={<Song />} />

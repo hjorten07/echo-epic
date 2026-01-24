@@ -44,6 +44,7 @@ const Artist = () => {
   const [albums, setAlbums] = useState<AlbumWithCover[]>([]);
   const [bio, setBio] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [wikiUrl, setWikiUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingAlbums, setLoadingAlbums] = useState(true);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
@@ -115,6 +116,9 @@ const Artist = () => {
         }
         if (wikiData.imageUrl) {
           setImageUrl(wikiData.imageUrl);
+        }
+        if (wikiData.articleUrl) {
+          setWikiUrl(wikiData.articleUrl);
         }
         
         // Fetch top rated songs/albums by this artist from the database
@@ -413,9 +417,16 @@ const Artist = () => {
               <h2 className="font-display text-2xl font-bold mb-4">About</h2>
               <div className="glass-card rounded-xl p-6">
                 <p className="text-muted-foreground leading-relaxed">{bio}</p>
-                <p className="text-xs text-muted-foreground/60 mt-4">
-                  Source: Wikipedia
-                </p>
+                {wikiUrl && (
+                  <a 
+                    href={wikiUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-block mt-4 text-sm text-primary hover:underline"
+                  >
+                    Read more on Wikipedia →
+                  </a>
+                )}
               </div>
             </section>
           )}

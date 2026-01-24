@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, TrendingUp, Users, Gamepad2, Info, MessageSquare, Instagram, Twitter, Music2, X, Sparkles } from "lucide-react";
+import { Home, TrendingUp, Users, Gamepad2, Info, MessageSquare, Instagram, Twitter, Music2, X, Sparkles, ListMusic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
@@ -26,6 +26,7 @@ export const MobileMenu = ({ trigger }: MobileMenuProps) => {
     { path: "/", label: "Home", icon: Home },
     { path: "/top100", label: "Top 100", icon: TrendingUp },
     { path: "/recommendations", label: "Recommendations", icon: Sparkles },
+    { path: "/playlists", label: "Playlists", icon: ListMusic },
     { path: "/social", label: "Social", icon: Users },
     { path: "/games", label: "Games", icon: Gamepad2 },
   ];

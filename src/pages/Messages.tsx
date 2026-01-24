@@ -1,14 +1,28 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Send, Loader2, MessageCircle } from "lucide-react";
+import { ArrowLeft, Send, Loader2, MessageCircle, Flag, Trash2, MoreVertical } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { filterContent } from "@/lib/chatFilter";
 
 interface Message {
   id: string;
@@ -17,6 +31,7 @@ interface Message {
   receiver_id: string;
   created_at: string;
   read: boolean;
+  deleted_by_sender?: boolean;
 }
 
 interface Profile {
@@ -36,6 +51,9 @@ const Messages = () => {
   const [sending, setSending] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [canMessage, setCanMessage] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
+  const [reportReason, setReportReason] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -85,7 +103,11 @@ const Messages = () => {
         .order("created_at", { ascending: true });
       
       if (data) {
-        setMessages(data);
+        // Filter out messages deleted by sender (unless we're the receiver)
+        const visibleMessages = data.filter(m => 
+          !m.deleted_by_sender || m.sender_id !== user.id
+        );
+        setMessages(visibleMessages);
         
         // Mark unread messages as read
         const unreadIds = data
@@ -112,24 +134,30 @@ const Messages = () => {
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "messages",
         },
         (payload) => {
-          const msg = payload.new as Message;
-          if (
-            (msg.sender_id === user.id && msg.receiver_id === partnerId) ||
-            (msg.sender_id === partnerId && msg.receiver_id === user.id)
-          ) {
-            setMessages((prev) => [...prev, msg]);
-            
-            // Mark as read if we're the receiver
-            if (msg.receiver_id === user.id) {
-              supabase
-                .from("messages")
-                .update({ read: true })
-                .eq("id", msg.id);
+          if (payload.eventType === "INSERT") {
+            const msg = payload.new as Message;
+            if (
+              (msg.sender_id === user.id && msg.receiver_id === partnerId) ||
+              (msg.sender_id === partnerId && msg.receiver_id === user.id)
+            ) {
+              setMessages((prev) => [...prev, msg]);
+              
+              if (msg.receiver_id === user.id) {
+                supabase
+                  .from("messages")
+                  .update({ read: true })
+                  .eq("id", msg.id);
+              }
+            }
+          } else if (payload.eventType === "UPDATE") {
+            const msg = payload.new as Message;
+            if (msg.deleted_by_sender && msg.sender_id === user.id) {
+              setMessages(prev => prev.filter(m => m.id !== msg.id));
             }
           }
         }
@@ -147,6 +175,13 @@ const Messages = () => {
 
   const handleSend = async () => {
     if (!newMessage.trim() || !user || !partnerId || !canMessage) return;
+
+    // Check content filter
+    const filterResult = filterContent(newMessage);
+    if (!filterResult.isClean) {
+      toast.error(filterResult.reason || "Message contains inappropriate content");
+      return;
+    }
 
     setSending(true);
     const { error } = await supabase.from("messages").insert({
@@ -167,6 +202,39 @@ const Messages = () => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    const { error } = await supabase
+      .from("messages")
+      .update({ deleted_by_sender: true, deleted_at: new Date().toISOString() })
+      .eq("id", messageId);
+
+    if (error) {
+      toast.error("Failed to delete message");
+    } else {
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      toast.success("Message deleted");
+    }
+  };
+
+  const handleReportMessage = async () => {
+    if (!reportingMessage || !reportReason.trim() || !user) return;
+
+    const { error } = await supabase.from("reports").insert({
+      reporter_id: user.id,
+      reported_user_id: reportingMessage.sender_id,
+      reason: `Message report: "${reportingMessage.content.substring(0, 100)}..." - Reason: ${reportReason}`,
+    });
+
+    if (error) {
+      toast.error("Failed to submit report");
+    } else {
+      toast.success("Report submitted. Our team will review it.");
+      setReportDialogOpen(false);
+      setReportingMessage(null);
+      setReportReason("");
     }
   };
 
@@ -218,27 +286,80 @@ const Messages = () => {
                   <div
                     key={msg.id}
                     className={cn(
-                      "flex",
+                      "flex group",
                       msg.sender_id === user.id ? "justify-end" : "justify-start"
                     )}
                   >
-                    <div
-                      className={cn(
-                        "max-w-[75%] rounded-2xl px-4 py-2",
-                        msg.sender_id === user.id
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary"
+                    <div className="flex items-start gap-1">
+                      {/* Actions for received messages */}
+                      {msg.sender_id !== user.id && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <MoreVertical className="w-3 h-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => {
+                                setReportingMessage(msg);
+                                setReportDialogOpen(true);
+                              }}
+                            >
+                              <Flag className="w-4 h-4 mr-2" />
+                              Report
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
-                    >
-                      <p className="break-words">{msg.content}</p>
-                      <p className={cn(
-                        "text-xs mt-1",
-                        msg.sender_id === user.id
-                          ? "text-primary-foreground/70"
-                          : "text-muted-foreground"
-                      )}>
-                        {format(new Date(msg.created_at), "HH:mm")}
-                      </p>
+                      
+                      <div
+                        className={cn(
+                          "max-w-[75%] rounded-2xl px-4 py-2",
+                          msg.sender_id === user.id
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary"
+                        )}
+                      >
+                        <p className="break-words">{msg.content}</p>
+                        <p className={cn(
+                          "text-xs mt-1",
+                          msg.sender_id === user.id
+                            ? "text-primary-foreground/70"
+                            : "text-muted-foreground"
+                        )}>
+                          {format(new Date(msg.created_at), "HH:mm")}
+                        </p>
+                      </div>
+
+                      {/* Actions for sent messages */}
+                      {msg.sender_id === user.id && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <MoreVertical className="w-3 h-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleDeleteMessage(msg.id)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -275,6 +396,38 @@ const Messages = () => {
           )}
         </div>
       </main>
+
+      {/* Report Dialog */}
+      <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report Message</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-3 rounded-lg bg-secondary/50 text-sm">
+              "{reportingMessage?.content.substring(0, 100)}..."
+            </div>
+            <Textarea
+              placeholder="Why are you reporting this message?"
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setReportDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleReportMessage}
+                disabled={!reportReason.trim()}
+              >
+                Submit Report
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
