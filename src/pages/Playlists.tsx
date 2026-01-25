@@ -80,6 +80,21 @@ const Playlists = () => {
             </Button>
           </div>
 
+          {/* How to use instructions */}
+          <div className="mb-8 p-4 rounded-xl bg-secondary/50 border border-border">
+            <h3 className="font-semibold mb-2 flex items-center gap-2">
+              <ListMusic className="w-5 h-5 text-primary" />
+              How to add songs to playlists
+            </h3>
+            <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+              <li>Create a playlist using the "New Playlist" button</li>
+              <li>Go to any song, album, or artist page</li>
+              <li>Look for the <span className="inline-flex items-center gap-1 text-primary font-medium"><Plus className="w-3 h-3" /> Add to Playlist</span> button near the rating section</li>
+              <li>Select which playlist to add it to</li>
+              <li>Come back here to play "This or That" with your collection!</li>
+            </ol>
+          </div>
+
           {/* Content */}
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Playlists List */}

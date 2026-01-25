@@ -3,32 +3,24 @@ import { Button } from "@/components/ui/button";
 import { Music2, Star, Users, ArrowRight, Search } from "lucide-react";
 import { VinylLoader } from "./VinylLoader";
 import { useAuth } from "@/hooks/useAuth";
-import { useTotalStats } from "@/hooks/useAdmin";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export const HeroSection = () => {
   const { user } = useAuth();
 
-  // Fetch real stats
-  const { data: ratingsCount } = useQuery({
-    queryKey: ["total-ratings-count"],
+  // Fetch public stats using security definer function (works without auth)
+  const { data: publicStats } = useQuery({
+    queryKey: ["public-stats"],
     queryFn: async () => {
-      const { count } = await supabase
-        .from("ratings")
-        .select("*", { count: "exact", head: true });
-      return count || 0;
+      const { data, error } = await supabase.rpc("get_public_stats");
+      if (error) {
+        console.error("Error fetching public stats:", error);
+        return { total_users: 0, total_ratings: 0 };
+      }
+      return data as { total_users: number; total_ratings: number };
     },
-  });
-
-  const { data: usersCount } = useQuery({
-    queryKey: ["total-users-count"],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("profiles")
-        .select("*", { count: "exact", head: true });
-      return count || 0;
-    },
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 
   const formatCount = (count: number) => {
@@ -116,7 +108,7 @@ export const HeroSection = () => {
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Star className="w-5 h-5 text-primary" />
                 <span className="font-display text-2xl md:text-3xl font-bold">
-                  {formatCount(ratingsCount || 0)}
+                  {formatCount(publicStats?.total_ratings || 0)}
                 </span>
               </div>
               <span className="text-sm text-muted-foreground">Ratings</span>
@@ -125,7 +117,7 @@ export const HeroSection = () => {
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Users className="w-5 h-5 text-primary" />
                 <span className="font-display text-2xl md:text-3xl font-bold">
-                  {formatCount(usersCount || 0)}
+                  {formatCount(publicStats?.total_users || 0)}
                 </span>
               </div>
               <span className="text-sm text-muted-foreground">Users</span>

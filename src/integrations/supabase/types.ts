@@ -44,6 +44,27 @@ export type Database = {
         }
         Relationships: []
       }
+      banned_words: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          word: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          word: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          word?: string
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           content: string
@@ -305,6 +326,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_settings: {
+        Row: {
+          global_avg_rating: number
+          id: string
+          min_ratings_for_ranking: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          global_avg_rating?: number
+          id?: string
+          min_ratings_for_ranking?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          global_avg_rating?: number
+          id?: string
+          min_ratings_for_ranking?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       playlist_songs: {
         Row: {
@@ -664,6 +709,7 @@ export type Database = {
         Returns: boolean
       }
       can_view_profile: { Args: { target_user_id: string }; Returns: boolean }
+      get_public_stats: { Args: never; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
       is_following: { Args: { target_user_id: string }; Returns: boolean }
     }

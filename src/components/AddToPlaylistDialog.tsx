@@ -18,6 +18,9 @@ interface AddToPlaylistDialogProps {
   songName: string;
   songArtist?: string;
   songImage?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: React.ReactNode;
 }
 
 export const AddToPlaylistDialog = ({
@@ -25,14 +28,21 @@ export const AddToPlaylistDialog = ({
   songName,
   songArtist,
   songImage,
+  open: controlledOpen,
+  onOpenChange,
+  trigger,
 }: AddToPlaylistDialogProps) => {
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const { data: playlists, isLoading } = usePlaylists();
   const createPlaylist = useCreatePlaylist();
   const addSong = useAddSongToPlaylist();
+
+  // Use controlled or uncontrolled state
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
 
   const handleAddToPlaylist = async (playlistId: string) => {
     await addSong.mutateAsync({
@@ -66,13 +76,16 @@ export const AddToPlaylistDialog = ({
   if (!user) return null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <ListMusic className="w-4 h-4" />
-          Add to Playlist
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setOpen}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+      {!trigger && controlledOpen === undefined && (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-2">
+            <ListMusic className="w-4 h-4" />
+            Add to Playlist
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="font-display">Add to Playlist</DialogTitle>

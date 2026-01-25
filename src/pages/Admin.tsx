@@ -15,6 +15,8 @@ import {
   Upload,
   Image as ImageIcon,
   MessageSquare,
+  Filter,
+  Settings,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -43,10 +45,12 @@ import {
   useDeleteUser,
 } from "@/hooks/useAdmin";
 import { useSuggestions, useUpdateSuggestionStatus } from "@/hooks/useSuggestions";
-
+import { useBannedWords, useAddBannedWord, useDeleteBannedWord } from "@/hooks/useBannedWords";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const Admin = () => {
+  const queryClient = useQueryClient();
   const isAdmin = useIsAdmin();
   const [timeRange, setTimeRange] = useState("30");
   const [newArtist, setNewArtist] = useState({
@@ -60,17 +64,59 @@ const Admin = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [newBannedWord, setNewBannedWord] = useState("");
+  const [minRatings, setMinRatings] = useState<number>(50);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: totalStats, isLoading: statsLoading } = useTotalStats();
   const { data: reports, isLoading: reportsLoading } = useReports();
   const { data: customArtists } = useCustomArtists();
   const { data: suggestions, isLoading: suggestionsLoading } = useSuggestions();
+  const { data: bannedWords, isLoading: bannedWordsLoading } = useBannedWords();
   const updateReportStatus = useUpdateReportStatus();
   const updateSuggestionStatus = useUpdateSuggestionStatus();
   const createCustomArtist = useCreateCustomArtist();
   const deleteCustomArtist = useDeleteCustomArtist();
   const deleteUser = useDeleteUser();
+  const addBannedWord = useAddBannedWord();
+  const deleteBannedWord = useDeleteBannedWord();
+
+  // Fetch platform settings
+  const { data: platformSettings } = useQuery({
+    queryKey: ["platform-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("platform_settings")
+        .select("*")
+        .eq("id", "default")
+        .maybeSingle();
+      if (error) throw error;
+      if (data) {
+        setMinRatings(data.min_ratings_for_ranking);
+      }
+      return data;
+    },
+  });
+
+  const updatePlatformSettings = useMutation({
+    mutationFn: async (settings: { min_ratings_for_ranking: number }) => {
+      const { error } = await supabase
+        .from("platform_settings")
+        .update({ 
+          min_ratings_for_ranking: settings.min_ratings_for_ranking,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", "default");
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["platform-settings"] });
+      toast.success("Settings updated!");
+    },
+    onError: () => {
+      toast.error("Failed to update settings");
+    },
+  });
 
   if (!isAdmin) {
     return <Navigate to="/settings" replace />;
@@ -212,26 +258,34 @@ const Admin = () => {
           </div>
 
           <Tabs defaultValue="analytics" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5 max-w-xl">
+            <TabsList className="grid w-full grid-cols-7 max-w-3xl">
               <TabsTrigger value="analytics" className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
-                Analytics
+                <span className="hidden sm:inline">Analytics</span>
               </TabsTrigger>
               <TabsTrigger value="data" className="flex items-center gap-2">
                 <Eye className="w-4 h-4" />
-                Data
+                <span className="hidden sm:inline">Data</span>
               </TabsTrigger>
               <TabsTrigger value="create" className="flex items-center gap-2">
                 <Plus className="w-4 h-4" />
-                Create
+                <span className="hidden sm:inline">Create</span>
               </TabsTrigger>
               <TabsTrigger value="reports" className="flex items-center gap-2">
                 <Flag className="w-4 h-4" />
-                Reports
+                <span className="hidden sm:inline">Reports</span>
               </TabsTrigger>
               <TabsTrigger value="suggestions" className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
-                Feedback
+                <span className="hidden sm:inline">Feedback</span>
+              </TabsTrigger>
+              <TabsTrigger value="filter" className="flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                <span className="hidden sm:inline">Chat Filter</span>
+              </TabsTrigger>
+              <TabsTrigger value="dynamics" className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                <span className="hidden sm:inline">Dynamics</span>
               </TabsTrigger>
             </TabsList>
 
@@ -755,6 +809,137 @@ const Admin = () => {
                   <p className="text-muted-foreground">No feedback yet</p>
                 </div>
               )}
+            </TabsContent>
+
+            {/* Chat Filter Tab */}
+            <TabsContent value="filter" className="space-y-6">
+              <h2 className="font-display text-xl font-bold">Chat Filter</h2>
+              <p className="text-muted-foreground">
+                Manage banned words for the chat filter. These words will be blocked in all messages and comments.
+              </p>
+
+              {/* Add new word */}
+              <div className="glass-card rounded-xl p-6 max-w-md">
+                <Label htmlFor="new-banned-word" className="mb-2 block">Add Banned Word</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="new-banned-word"
+                    value={newBannedWord}
+                    onChange={(e) => setNewBannedWord(e.target.value)}
+                    placeholder="Enter word to ban..."
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newBannedWord.trim()) {
+                        addBannedWord.mutate(newBannedWord);
+                        setNewBannedWord("");
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={() => {
+                      if (newBannedWord.trim()) {
+                        addBannedWord.mutate(newBannedWord);
+                        setNewBannedWord("");
+                      }
+                    }}
+                    disabled={!newBannedWord.trim() || addBannedWord.isPending}
+                  >
+                    {addBannedWord.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* List of banned words */}
+              {bannedWordsLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : bannedWords && bannedWords.length > 0 ? (
+                <div className="glass-card rounded-xl p-6">
+                  <h3 className="font-semibold mb-4">Banned Words ({bannedWords.length})</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {bannedWords.map((word) => (
+                      <div
+                        key={word.id}
+                        className="flex items-center gap-1 px-3 py-1 bg-destructive/10 text-destructive rounded-full text-sm"
+                      >
+                        <span>{word.word}</span>
+                        <button
+                          onClick={() => deleteBannedWord.mutate(word.id)}
+                          className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="glass-card rounded-xl p-8 text-center">
+                  <Filter className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-muted-foreground">No banned words configured</p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Dynamics Tab */}
+            <TabsContent value="dynamics" className="space-y-6">
+              <h2 className="font-display text-xl font-bold">Platform Dynamics</h2>
+              <p className="text-muted-foreground">
+                Configure ranking algorithms and platform settings
+              </p>
+
+              <div className="glass-card rounded-xl p-6 max-w-xl space-y-6">
+                <div>
+                  <h3 className="font-semibold mb-4">Top 100 Ranking Settings</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    The Top 100 uses Bayesian weighted ratings (similar to IMDb) to prevent items with 
+                    few ratings from dominating the list.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="min-ratings">Minimum Ratings Required</Label>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Items need at least this many ratings to appear in Top 100. Default: 50
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          id="min-ratings"
+                          type="number"
+                          min={1}
+                          max={1000}
+                          value={minRatings}
+                          onChange={(e) => setMinRatings(Number(e.target.value))}
+                          className="w-32"
+                        />
+                        <Button
+                          onClick={() => updatePlatformSettings.mutate({ min_ratings_for_ranking: minRatings })}
+                          disabled={updatePlatformSettings.isPending || minRatings === platformSettings?.min_ratings_for_ranking}
+                        >
+                          {updatePlatformSettings.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            "Save"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t">
+                      <h4 className="font-medium mb-2">How Bayesian Weighted Rating Works</h4>
+                      <div className="bg-secondary/50 rounded-lg p-4 font-mono text-sm">
+                        <p>weighted = (v / (v + m)) × R + (m / (v + m)) × C</p>
+                      </div>
+                      <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                        <li><strong>R</strong> = Item's raw average rating</li>
+                        <li><strong>v</strong> = Number of ratings for this item</li>
+                        <li><strong>m</strong> = Minimum ratings required ({minRatings})</li>
+                        <li><strong>C</strong> = Global average rating (~7.0)</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

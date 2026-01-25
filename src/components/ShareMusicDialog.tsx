@@ -22,6 +22,10 @@ interface ShareMusicDialogProps {
   itemName: string;
   itemImage?: string;
   itemSubtitle?: string;
+  itemArtist?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: React.ReactNode;
 }
 
 export const ShareMusicDialog = ({
@@ -30,13 +34,22 @@ export const ShareMusicDialog = ({
   itemName,
   itemImage,
   itemSubtitle,
+  itemArtist,
+  open: controlledOpen,
+  onOpenChange,
+  trigger,
 }: ShareMusicDialogProps) => {
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFriend, setSelectedFriend] = useState<{ id: string; username: string } | null>(null);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+
+  // Use controlled or uncontrolled state
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
+  const subtitle = itemSubtitle || itemArtist;
 
   // Fetch mutual followers (friends who can receive messages)
   const { data: friends, isLoading } = useQuery({
@@ -72,7 +85,7 @@ export const ShareMusicDialog = ({
 
       return profiles || [];
     },
-    enabled: !!user && open,
+    enabled: !!user && isOpen,
   });
 
   const filteredFriends = friends?.filter(f => 
@@ -86,8 +99,8 @@ export const ShareMusicDialog = ({
     try {
       const shareUrl = `${window.location.origin}/${itemType}/${itemId}`;
       const shareContent = message 
-        ? `${message}\n\n🎵 ${itemName}${itemSubtitle ? ` - ${itemSubtitle}` : ""}\n${shareUrl}`
-        : `Check this out! 🎵\n\n${itemName}${itemSubtitle ? ` - ${itemSubtitle}` : ""}\n${shareUrl}`;
+        ? `${message}\n\n🎵 ${itemName}${subtitle ? ` - ${subtitle}` : ""}\n${shareUrl}`
+        : `Check this out! 🎵\n\n${itemName}${subtitle ? ` - ${subtitle}` : ""}\n${shareUrl}`;
 
       const { error } = await supabase.from("messages").insert({
         sender_id: user.id,
@@ -112,13 +125,16 @@ export const ShareMusicDialog = ({
   if (!user) return null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Share2 className="w-4 h-4" />
-          Share
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setOpen}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+      {!trigger && controlledOpen === undefined && (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-2">
+            <Share2 className="w-4 h-4" />
+            Share
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="font-display">Share with a friend!</DialogTitle>
@@ -135,8 +151,8 @@ export const ShareMusicDialog = ({
           )}
           <div className="flex-1 min-w-0">
             <p className="font-medium truncate">{itemName}</p>
-            {itemSubtitle && (
-              <p className="text-sm text-muted-foreground truncate">{itemSubtitle}</p>
+            {subtitle && (
+              <p className="text-sm text-muted-foreground truncate">{subtitle}</p>
             )}
             <p className="text-xs text-primary capitalize">{itemType}</p>
           </div>
