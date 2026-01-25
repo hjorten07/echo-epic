@@ -50,9 +50,7 @@ export const Navbar = () => {
               <Music2 className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-display font-bold text-xl hidden sm:block">
-              <span className="text-foreground">Rate</span>
-              <span className="text-primary">The</span>
-              <span className="text-foreground">Music</span>
+              <span className="text-primary">Relics</span>
             </span>
           </Link>
 
