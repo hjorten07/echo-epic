@@ -485,7 +485,11 @@ const Profile = () => {
                 </div>
 
                 {/* Badges */}
-                <BadgesSection userId={displayUserId} canView={canViewProfile} />
+                <BadgesSection 
+                  userId={displayUserId} 
+                  canView={canViewProfile} 
+                  totalRatings={stats.total}
+                />
               </>
             )}
           </div>
