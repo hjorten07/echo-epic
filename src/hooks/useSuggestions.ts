@@ -8,20 +8,38 @@ export const useSuggestions = (status?: string) => {
   return useQuery({
     queryKey: ["suggestions", status],
     queryFn: async () => {
-      let query = (supabase as any).from("suggestions")
-        .select(`
-          *,
-          profiles:user_id (username, avatar_url)
-        `)
+      // First get all suggestions
+      let query = supabase
+        .from("suggestions")
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (status && status !== "all") {
         query = query.eq("status", status);
       }
 
-      const { data, error } = await query;
+      const { data: suggestions, error } = await query;
       if (error) throw error;
-      return data;
+      
+      if (!suggestions || suggestions.length === 0) return [];
+      
+      // Get unique user IDs
+      const userIds = [...new Set(suggestions.map(s => s.user_id))];
+      
+      // Fetch profiles separately
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username, avatar_url")
+        .in("id", userIds);
+      
+      // Create a map for quick lookup
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      
+      // Combine the data
+      return suggestions.map(suggestion => ({
+        ...suggestion,
+        profiles: profileMap.get(suggestion.user_id) || null
+      }));
     },
     enabled: isAdmin,
   });
@@ -48,7 +66,8 @@ export const useUpdateSuggestionStatus = () => {
         updateData.resolved_at = new Date().toISOString();
       }
 
-      const { error } = await (supabase as any).from("suggestions")
+      const { error } = await supabase
+        .from("suggestions")
         .update(updateData)
         .eq("id", id);
 
