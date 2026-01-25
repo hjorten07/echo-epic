@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { StarRating } from "@/components/StarRating";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRating, useItemRating, useRateMutation, useDeleteRatingMutation } from "@/hooks/useRatings";
 import { useCheckAndAwardBadges, useUpdateStreak } from "@/hooks/useBadges";
-import { Trash2, Users } from "lucide-react";
+import { Trash2, Users, Plus, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
+import { ShareMusicDialog } from "@/components/ShareMusicDialog";
 
 interface ItemRatingSectionProps {
   itemType: "artist" | "album" | "song";
@@ -24,6 +27,8 @@ export const ItemRatingSection = ({
 }: ItemRatingSectionProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   
   const { data: userRating } = useUserRating(itemType, itemId);
   const { data: itemRating } = useItemRating(itemType, itemId);
@@ -76,67 +81,112 @@ export const ItemRatingSection = ({
   const currentUserRating = userRating?.rating || 0;
 
   return (
-    <div className="flex flex-col md:flex-row gap-6">
-      {/* User Rating - Interactive Stars */}
-      <div className="flex-1">
-        <p className="text-sm text-muted-foreground mb-2">
-          {user ? "Your Rating" : "Rate This"}
-        </p>
-        <div className="flex items-center gap-3">
-          <StarRating
-            rating={currentUserRating}
-            onRate={handleRate}
-            size="lg"
-            showValue={currentUserRating > 0}
-          />
-          {user && currentUserRating > 0 && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleDeleteRating}
-              className="text-destructive hover:text-destructive shrink-0"
-              title="Delete rating"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* User Rating - Interactive Stars */}
+        <div className="flex-1">
+          <p className="text-sm text-muted-foreground mb-2">
+            {user ? "Your Rating" : "Rate This"}
+          </p>
+          <div className="flex items-center gap-3">
+            <StarRating
+              rating={currentUserRating}
+              onRate={handleRate}
+              size="lg"
+              showValue={currentUserRating > 0}
+            />
+            {user && currentUserRating > 0 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleDeleteRating}
+                className="text-destructive hover:text-destructive shrink-0"
+                title="Delete rating"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+          {!user && (
+            <p className="text-xs text-muted-foreground mt-2">
+              <button
+                onClick={() => navigate("/auth")}
+                className="text-primary hover:underline"
+              >
+                Log in
+              </button>
+              {" "}to rate this {itemType}
+            </p>
+          )}
+          {user && currentUserRating === 0 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Click a star to rate
+            </p>
           )}
         </div>
-        {!user && (
-          <p className="text-xs text-muted-foreground mt-2">
-            <button
-              onClick={() => navigate("/auth")}
-              className="text-primary hover:underline"
-            >
-              Log in
-            </button>
-            {" "}to rate this {itemType}
-          </p>
-        )}
-        {user && currentUserRating === 0 && (
-          <p className="text-xs text-muted-foreground mt-2">
-            Click a star to rate
-          </p>
-        )}
-      </div>
 
-      {/* Community Rating - Display Only */}
-      <div className="flex items-center gap-4 p-4 rounded-xl bg-secondary/50">
-        <Users className="w-5 h-5 text-muted-foreground" />
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">Community</p>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-display font-bold text-primary">
-              {avgRating > 0 ? avgRating.toFixed(1) : "—"}
-            </span>
-            <span className="text-sm text-muted-foreground">
-              / 10
-            </span>
+        {/* Community Rating - Display Only */}
+        <div className="flex items-center gap-4 p-4 rounded-xl bg-secondary/50">
+          <Users className="w-5 h-5 text-muted-foreground" />
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Community</p>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-display font-bold text-primary">
+                {avgRating > 0 ? avgRating.toFixed(1) : "—"}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                / 10
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {totalRatings} {totalRatings === 1 ? "rating" : "ratings"}
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {totalRatings} {totalRatings === 1 ? "rating" : "ratings"}
-          </p>
         </div>
       </div>
+
+      {/* Action Buttons */}
+      {user && (
+        <div className="flex gap-2 flex-wrap">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowPlaylistDialog(true)}
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add to Playlist
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowShareDialog(true)}
+            className="gap-2"
+          >
+            <Share2 className="w-4 h-4" />
+            Share
+          </Button>
+        </div>
+      )}
+
+      {/* Dialogs */}
+      <AddToPlaylistDialog
+        open={showPlaylistDialog}
+        onOpenChange={setShowPlaylistDialog}
+        songId={itemId}
+        songName={itemName}
+        songArtist={itemSubtitle}
+        songImage={itemImage}
+      />
+      <ShareMusicDialog
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+        itemType={itemType}
+        itemId={itemId}
+        itemName={itemName}
+        itemImage={itemImage}
+        itemArtist={itemSubtitle}
+      />
     </div>
   );
 };

@@ -1,18 +1,12 @@
 // Chat content filter for inappropriate content
-// This is a basic filter - for production, consider using a more robust solution
+// This filter works with a database-backed banned words list
 
-const INAPPROPRIATE_WORDS = [
-  // Slurs and hate speech (censored for code review)
-  "nigger", "nigga", "faggot", "fag", "retard", "retarded",
-  "cunt", "kike", "spic", "chink", "wetback", "beaner",
-  // Sexual content
-  "porn", "xxx", "penis", "vagina", "dick", "cock", "pussy",
-  // Violence
-  "kill yourself", "kys", "suicide", "hang yourself",
-  // Spam patterns
-  "click here", "free money", "make money fast",
-];
+export interface FilterResult {
+  isClean: boolean;
+  reason?: string;
+}
 
+// Additional patterns that bypass word lists
 const INAPPROPRIATE_PATTERNS = [
   /\b(n+[i1]+[g6]+[e3]*r+s*|n+[i1]+[g6]+[a@]+s*)\b/i,
   /\b(f+[a@]+[g6]+[o0]+t+s*|f+[a@]+[g6]+s*)\b/i,
@@ -21,21 +15,16 @@ const INAPPROPRIATE_PATTERNS = [
   /\b(k+y+s+)\b/i,
 ];
 
-export interface FilterResult {
-  isClean: boolean;
-  reason?: string;
-}
-
-export function filterContent(content: string): FilterResult {
+export function filterContent(content: string, bannedWords: string[] = []): FilterResult {
   if (!content || content.trim().length === 0) {
     return { isClean: false, reason: "Message cannot be empty" };
   }
 
   const lowerContent = content.toLowerCase();
 
-  // Check against word list
-  for (const word of INAPPROPRIATE_WORDS) {
-    if (lowerContent.includes(word)) {
+  // Check against database-backed word list
+  for (const word of bannedWords) {
+    if (lowerContent.includes(word.toLowerCase())) {
       return { 
         isClean: false, 
         reason: "Message contains inappropriate content" 
@@ -43,7 +32,7 @@ export function filterContent(content: string): FilterResult {
     }
   }
 
-  // Check against patterns
+  // Check against patterns (for variations/leetspeak)
   for (const pattern of INAPPROPRIATE_PATTERNS) {
     if (pattern.test(content)) {
       return { 

@@ -23,6 +23,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { filterContent } from "@/lib/chatFilter";
+import { useBannedWords } from "@/hooks/useBannedWords";
 
 interface Message {
   id: string;
@@ -55,6 +56,7 @@ const Messages = () => {
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const [reportReason, setReportReason] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { data: bannedWords } = useBannedWords();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -176,8 +178,9 @@ const Messages = () => {
   const handleSend = async () => {
     if (!newMessage.trim() || !user || !partnerId || !canMessage) return;
 
-    // Check content filter
-    const filterResult = filterContent(newMessage);
+    // Check content filter with banned words from database
+    const bannedWordList = bannedWords?.map(w => w.word) || [];
+    const filterResult = filterContent(newMessage, bannedWordList);
     if (!filterResult.isClean) {
       toast.error(filterResult.reason || "Message contains inappropriate content");
       return;
