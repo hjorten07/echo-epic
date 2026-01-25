@@ -77,12 +77,20 @@ export const HigherLowerGame = () => {
       return;
     }
 
-    setIsPlaying(true);
-    setScore(0);
+    // Reset all game state first
     setGameOver(false);
-    setLoading(true);
+    setShowResult(false);
+    setIsCorrect(false);
+    setCurrentItem(null);
+    setNextItem(null);
+    setScore(0);
     setUsedIds(new Set());
+    setAllItems([]);
+    
+    setIsPlaying(true);
+    setLoading(true);
 
+    // Fetch fresh items
     const items = await fetchRatedItems(selectedType);
 
     if (items.length < 2) {
@@ -94,14 +102,15 @@ export const HigherLowerGame = () => {
 
     setAllItems(items);
 
-    const first = getRandomItem(items, new Set());
-    const newUsed = new Set<string>();
-    if (first) newUsed.add(first.item_id);
+    // Get two random unique items
+    const freshUsed = new Set<string>();
+    const first = getRandomItem(items, freshUsed);
+    if (first) freshUsed.add(first.item_id);
     
-    const second = getRandomItem(items, newUsed);
-    if (second) newUsed.add(second.item_id);
+    const second = getRandomItem(items, freshUsed);
+    if (second) freshUsed.add(second.item_id);
 
-    setUsedIds(newUsed);
+    setUsedIds(freshUsed);
     setCurrentItem(first);
     setNextItem(second);
     setLoading(false);

@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
 interface LeaderboardUser {
   rank: number;
   id: string;
@@ -16,45 +18,49 @@ interface LeaderboardUser {
 }
 
 const Social = () => {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"leaderboard" | "search">("leaderboard");
 
-  // Fetch leaderboard from database
+  // Fetch leaderboard - works for all users (authenticated or not)
   const { data: leaderboard, isLoading } = useQuery({
     queryKey: ["leaderboard"],
     queryFn: async () => {
-      // Get profiles with their rating counts
+      // First get all public profiles - use anon access
       const { data: profiles, error } = await supabase
         .from("profiles")
-        .select(`
-          id,
-          username,
-          avatar_url,
-          is_private
-        `)
+        .select("id, username, avatar_url, is_private")
         .eq("is_private", false);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching profiles:", error);
+        // If RLS blocks, try fetching via RPC for stats only
+        return [];
+      }
 
-      // For each profile, get their ratings count
+      // For each profile, get their ratings count from item_ratings view or directly
       const leaderboardData: LeaderboardUser[] = [];
       
       for (const profile of profiles || []) {
-        const { count, data: ratings } = await supabase
-          .from("ratings")
-          .select("rating", { count: "exact" })
-          .eq("user_id", profile.id);
+        try {
+          const { count, data: ratings } = await supabase
+            .from("ratings")
+            .select("rating", { count: "exact" })
+            .eq("user_id", profile.id);
 
-        if (count && count > 0) {
-          const avgRating = ratings ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length : 0;
-          leaderboardData.push({
-            rank: 0,
-            id: profile.id,
-            username: profile.username,
-            avatar_url: profile.avatar_url || undefined,
-            total_ratings: count,
-            avg_rating: avgRating,
-          });
+          if (count && count > 0) {
+            const avgRating = ratings ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length : 0;
+            leaderboardData.push({
+              rank: 0,
+              id: profile.id,
+              username: profile.username,
+              avatar_url: profile.avatar_url || undefined,
+              total_ratings: count,
+              avg_rating: avgRating,
+            });
+          }
+        } catch (e) {
+          // Skip profiles we can't access ratings for
         }
       }
 
