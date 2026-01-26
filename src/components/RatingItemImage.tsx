@@ -50,6 +50,9 @@ export const RatingItemImage = memo(({
   }, []);
 
   useEffect(() => {
+    // Track if component is still mounted
+    let isMounted = true;
+
     // If we already have an image or it's not a song, use existing
     if (itemImage || itemType !== "song") {
       setCoverUrl(itemImage);
@@ -71,7 +74,9 @@ export const RatingItemImage = memo(({
     // Check if there's already a pending request
     const pendingRequest = coverArtCache.getPendingRequest(cacheKey);
     if (pendingRequest) {
-      pendingRequest.then((url) => setCoverUrl(url));
+      pendingRequest.then((url) => {
+        if (isMounted) setCoverUrl(url);
+      });
       return;
     }
 
@@ -124,9 +129,16 @@ export const RatingItemImage = memo(({
     const promise = fetchCoverArt();
     coverArtCache.setPendingRequest(cacheKey, promise);
     promise.then((url) => {
-      setCoverUrl(url);
-      setLoading(false);
+      if (isMounted) {
+        setCoverUrl(url);
+        setLoading(false);
+      }
     });
+
+    // Cleanup: mark as unmounted to prevent state updates
+    return () => {
+      isMounted = false;
+    };
   }, [itemId, itemType, itemImage, isInView]);
 
   return (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { getCoverArt, getRecording } from "@/lib/musicbrainz";
 import { coverArtCache, recordingReleaseCache } from "@/lib/coverArtCache";
 
@@ -6,7 +6,8 @@ import { coverArtCache, recordingReleaseCache } from "@/lib/coverArtCache";
  * Optimized hook for fetching song cover art with:
  * - Shared global cache
  * - Deduped in-flight requests
- * - Intersection observer support
+ * - Proper cleanup to prevent memory leaks
+ * - Abort support for unmounted components
  */
 export const useSongCoverArt = (
   songId: string | undefined,
@@ -14,6 +15,14 @@ export const useSongCoverArt = (
 ) => {
   const [coverUrl, setCoverUrl] = useState<string | null>(existingImage || null);
   const [loading, setLoading] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     // If we already have an image, use it
@@ -37,7 +46,9 @@ export const useSongCoverArt = (
     // Check if there's already a pending request
     const pendingRequest = coverArtCache.getPendingRequest(cacheKey);
     if (pendingRequest) {
-      pendingRequest.then((url) => setCoverUrl(url));
+      pendingRequest.then((url) => {
+        if (mountedRef.current) setCoverUrl(url);
+      });
       return;
     }
 
@@ -77,8 +88,10 @@ export const useSongCoverArt = (
     const promise = fetchCoverArt();
     coverArtCache.setPendingRequest(cacheKey, promise);
     promise.then((url) => {
-      setCoverUrl(url);
-      setLoading(false);
+      if (mountedRef.current) {
+        setCoverUrl(url);
+        setLoading(false);
+      }
     });
   }, [songId, existingImage]);
 
