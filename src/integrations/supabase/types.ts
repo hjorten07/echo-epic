@@ -235,6 +235,87 @@ export type Database = {
           },
         ]
       }
+      hot_take_replies: {
+        Row: {
+          content: string
+          created_at: string
+          hot_take_id: string
+          id: string
+          parent_id: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          hot_take_id: string
+          id?: string
+          parent_id?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          hot_take_id?: string
+          id?: string
+          parent_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hot_take_replies_hot_take_id_fkey"
+            columns: ["hot_take_id"]
+            isOneToOne: false
+            referencedRelation: "hot_takes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hot_take_replies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "hot_take_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hot_take_replies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hot_takes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hot_takes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -688,6 +769,73 @@ export type Database = {
           },
         ]
       }
+      votes: {
+        Row: {
+          created_at: string
+          id: string
+          target_id: string
+          target_type: string
+          user_id: string
+          vote_type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          target_id: string
+          target_type: string
+          user_id: string
+          vote_type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          target_id?: string
+          target_type?: string
+          user_id?: string
+          vote_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wall_posts: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wall_posts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       item_ratings: {
@@ -710,6 +858,19 @@ export type Database = {
       }
       can_view_profile: { Args: { target_user_id: string }; Returns: boolean }
       get_public_stats: { Args: never; Returns: Json }
+      get_similar_users: {
+        Args: { limit_count?: number; target_user_id: string }
+        Returns: {
+          avatar_url: string
+          similarity: number
+          user_id: string
+          username: string
+        }[]
+      }
+      get_taste_similarity: {
+        Args: { user1_id: string; user2_id: string }
+        Returns: number
+      }
       is_admin: { Args: never; Returns: boolean }
       is_following: { Args: { target_user_id: string }; Returns: boolean }
       validate_message: { Args: { message_text: string }; Returns: boolean }
