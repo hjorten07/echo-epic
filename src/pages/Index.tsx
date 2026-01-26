@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, memo } from "react";
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { HeroSection } from "@/components/HeroSection";
@@ -7,6 +7,7 @@ import { HigherLowerGame } from "@/components/HigherLowerGame";
 import { MusicCard } from "@/components/MusicCard";
 import { StarRating } from "@/components/StarRating";
 import { SoundWaveAnimation } from "@/components/SoundWaveAnimation";
+import { LazyImage } from "@/components/LazyImage";
 import { Loader2 } from "lucide-react";
 import { useRecentRatings, useTopRatings } from "@/hooks/useRatings";
 import { useQuery } from "@tanstack/react-query";
@@ -92,11 +93,10 @@ const Index = () => {
                       >
                         <div className="w-12 h-12 rounded-lg bg-secondary overflow-hidden flex-shrink-0">
                           {rating.item_image ? (
-                            <img
+                            <LazyImage
                               src={rating.item_image}
                               alt={rating.item_name}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
+                              className="w-full h-full"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
@@ -165,11 +165,10 @@ const Index = () => {
                         </span>
                         <div className="w-10 h-10 rounded bg-muted overflow-hidden flex-shrink-0">
                           {item.item_image ? (
-                            <img
+                            <LazyImage
                               src={item.item_image}
                               alt={item.item_name}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
+                              className="w-full h-full"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">

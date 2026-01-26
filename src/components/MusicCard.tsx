@@ -1,5 +1,7 @@
+import { forwardRef, memo } from "react";
 import { Link } from "react-router-dom";
 import { StarRating } from "./StarRating";
+import { LazyImage } from "./LazyImage";
 import { cn } from "@/lib/utils";
 
 interface MusicCardProps {
@@ -13,7 +15,13 @@ interface MusicCardProps {
   className?: string;
 }
 
-export const MusicCard = ({
+/**
+ * Optimized music card with:
+ * - forwardRef support (fixes React warning)
+ * - Memoization to prevent unnecessary re-renders
+ * - LazyImage for optimized image loading
+ */
+export const MusicCard = memo(forwardRef<HTMLAnchorElement, MusicCardProps>(({
   id,
   type,
   name,
@@ -22,11 +30,12 @@ export const MusicCard = ({
   totalRatings,
   subtitle,
   className,
-}: MusicCardProps) => {
+}, ref) => {
   const linkPath = `/${type}/${id}`;
 
   return (
     <Link
+      ref={ref}
       to={linkPath}
       className={cn(
         "group block glass-card rounded-xl overflow-hidden transition-all duration-300",
@@ -37,11 +46,15 @@ export const MusicCard = ({
       {/* Image */}
       <div className="relative aspect-square overflow-hidden">
         {imageUrl ? (
-          <img
+          <LazyImage
             src={imageUrl}
             alt={name}
-            loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="w-full h-full"
+            fallback={
+              <span className="text-4xl font-display font-bold text-muted-foreground/30">
+                {name[0]?.toUpperCase()}
+              </span>
+            }
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-secondary to-muted flex items-center justify-center">
@@ -52,7 +65,7 @@ export const MusicCard = ({
         )}
         
         {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
         
         {/* Type badge */}
         <div className="absolute top-3 left-3">
@@ -85,4 +98,6 @@ export const MusicCard = ({
       </div>
     </Link>
   );
-};
+}));
+
+MusicCard.displayName = "MusicCard";

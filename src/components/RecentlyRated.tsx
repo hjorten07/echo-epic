@@ -1,6 +1,8 @@
+import { memo } from "react";
 import { Link } from "react-router-dom";
 import { StarRating } from "./StarRating";
 import { RatingItemImage } from "./RatingItemImage";
+import { LazyImage } from "./LazyImage";
 import { formatDistanceToNow } from "date-fns";
 
 interface RatingItem {
@@ -21,7 +23,10 @@ interface RecentlyRatedProps {
   items: RatingItem[];
 }
 
-export const RecentlyRated = ({ items }: RecentlyRatedProps) => {
+/**
+ * Optimized RecentlyRated component with memoization
+ */
+export const RecentlyRated = memo(({ items }: RecentlyRatedProps) => {
   return (
     <section className="py-8">
       <div className="flex items-center justify-between mb-6">
@@ -77,11 +82,10 @@ export const RecentlyRated = ({ items }: RecentlyRatedProps) => {
             >
               <div className="w-8 h-8 rounded-full overflow-hidden bg-secondary">
                 {item.ratedBy.avatarUrl ? (
-                  <img
+                  <LazyImage
                     src={item.ratedBy.avatarUrl}
                     alt={item.ratedBy.username}
-                    loading="lazy"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-primary text-primary-foreground text-sm font-bold">
@@ -98,4 +102,6 @@ export const RecentlyRated = ({ items }: RecentlyRatedProps) => {
       </div>
     </section>
   );
-};
+});
+
+RecentlyRated.displayName = "RecentlyRated";
