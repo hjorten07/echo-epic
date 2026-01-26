@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from "react";
+import { useState, useCallback, memo, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { StarRating } from "@/components/StarRating";
 import { Music2, Disc3, Mic2, Shuffle, Loader2 } from "lucide-react";
@@ -9,6 +9,15 @@ import { searchAll, SearchResult, getCoverArt, getRecording } from "@/lib/musicb
 import { useRateMutation } from "@/hooks/useRatings";
 import { toast } from "sonner";
 import { coverArtCache, recordingReleaseCache } from "@/lib/coverArtCache";
+
+// Stable type definitions outside component to prevent recreation
+const TYPES = [
+  { value: "song" as const, label: "Songs", icon: Music2 },
+  { value: "album" as const, label: "Albums", icon: Disc3 },
+  { value: "artist" as const, label: "Artists", icon: Mic2 },
+] as const;
+
+const SEARCH_TERMS = ["love", "life", "heart", "night", "summer", "dream", "fire", "star", "dance", "happy"] as const;
 
 interface ThisOrThatProps {
   isLoggedIn?: boolean;
@@ -73,62 +82,67 @@ export const ThisOrThat = memo(({ isLoggedIn = false, onPlay }: ThisOrThatProps)
   const [options, setOptions] = useState<(SearchResult & { coverUrl?: string })[]>([]);
   const [loading, setLoading] = useState(false);
   const [round, setRound] = useState(0);
+  const [chosenItem, setChosenItem] = useState<(SearchResult & { coverUrl?: string }) | null>(null);
+  const [showRatingPrompt, setShowRatingPrompt] = useState(false);
+  
   const navigate = useNavigate();
   const { user } = useAuth();
   const rateMutation = useRateMutation();
+  const mountedRef = useRef(true);
 
-  const types = [
-    { value: "song" as const, label: "Songs", icon: Music2 },
-    { value: "album" as const, label: "Albums", icon: Disc3 },
-    { value: "artist" as const, label: "Artists", icon: Mic2 },
-  ];
-
-  const searchTerms = ["love", "life", "heart", "night", "summer", "dream", "fire", "star", "dance", "happy"];
+  // Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const fetchOptions = useCallback(async () => {
     setLoading(true);
     try {
-      const randomTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)];
+      const randomTerm = SEARCH_TERMS[Math.floor(Math.random() * SEARCH_TERMS.length)];
       const results = await searchAll(randomTerm, 20);
       
       // Filter by type
       const filteredResults = results.filter(r => r.type === selectedType);
       
-      if (filteredResults.length >= 2) {
+      if (filteredResults.length >= 2 && mountedRef.current) {
         // Pick two random items
         const shuffled = filteredResults.sort(() => 0.5 - Math.random());
         const selected = shuffled.slice(0, 2);
         
         // Fetch cover art in parallel with caching
         const withCovers = await Promise.all(selected.map(fetchCoverForItem));
-        setOptions(withCovers);
+        if (mountedRef.current) {
+          setOptions(withCovers);
+        }
       }
     } catch (error) {
       console.error("Error fetching options:", error);
     }
-    setLoading(false);
+    if (mountedRef.current) {
+      setLoading(false);
+    }
   }, [selectedType]);
 
-  const handlePlay = () => {
+  const handlePlay = useCallback(() => {
     if (!user) {
       navigate("/auth");
       return;
     }
     setIsPlaying(true);
     fetchOptions();
-  };
+  }, [user, navigate, fetchOptions]);
 
-  const [chosenItem, setChosenItem] = useState<(SearchResult & { coverUrl?: string }) | null>(null);
-  const [showRatingPrompt, setShowRatingPrompt] = useState(false);
-
-  const handleChoice = (choice: SearchResult & { coverUrl?: string }) => {
+  const handleChoice = useCallback((choice: SearchResult & { coverUrl?: string }) => {
     if (!user) return;
     setChosenItem(choice);
     setShowRatingPrompt(true);
     toast.success(`Great choice! You picked ${choice.name}`);
-  };
+  }, [user]);
 
-  const handleRateChoice = async (rating: number) => {
+  const handleRateChoice = useCallback(async (rating: number) => {
     if (!user || !chosenItem) return;
 
     try {
@@ -148,24 +162,29 @@ export const ThisOrThat = memo(({ isLoggedIn = false, onPlay }: ThisOrThatProps)
     setChosenItem(null);
     setRound(r => r + 1);
     fetchOptions();
-  };
+  }, [user, chosenItem, rateMutation, fetchOptions]);
 
-  const handleSkipRating = () => {
+  const handleSkipRating = useCallback(() => {
     setShowRatingPrompt(false);
     setChosenItem(null);
     setRound(r => r + 1);
     fetchOptions();
-  };
+  }, [fetchOptions]);
 
-  const handleSkip = () => {
+  const handleSkip = useCallback(() => {
     fetchOptions();
-  };
+  }, [fetchOptions]);
+
+  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
+  const handleExitGame = useCallback(() => setIsPlaying(false), []);
+  const handleTypeSelect = useCallback((type: "song" | "album" | "artist") => setSelectedType(type), []);
 
   return (
     <section 
       className="relative glass-card rounded-2xl overflow-hidden"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Background Animation */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/5" />
@@ -201,10 +220,10 @@ export const ThisOrThat = memo(({ isLoggedIn = false, onPlay }: ThisOrThatProps)
 
                 {/* Type Selector */}
                 <div className="flex gap-2">
-                  {types.map((type) => (
+                  {TYPES.map((type) => (
                     <button
                       key={type.value}
-                      onClick={() => setSelectedType(type.value)}
+                      onClick={() => handleTypeSelect(type.value)}
                       className={cn(
                         "flex items-center gap-2 px-4 py-2 rounded-lg transition-all",
                         selectedType === type.value
@@ -258,7 +277,7 @@ export const ThisOrThat = memo(({ isLoggedIn = false, onPlay }: ThisOrThatProps)
               </div>
               <Button
                 variant="ghost"
-                onClick={() => setIsPlaying(false)}
+                onClick={handleExitGame}
                 className="text-muted-foreground"
               >
                 Exit Game
