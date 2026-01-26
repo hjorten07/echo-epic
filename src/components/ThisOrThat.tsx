@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { StarRating } from "@/components/StarRating";
 import { Music2, Disc3, Mic2, Shuffle, Loader2 } from "lucide-react";
@@ -8,13 +8,65 @@ import { useAuth } from "@/hooks/useAuth";
 import { searchAll, SearchResult, getCoverArt, getRecording } from "@/lib/musicbrainz";
 import { useRateMutation } from "@/hooks/useRatings";
 import { toast } from "sonner";
+import { coverArtCache, recordingReleaseCache } from "@/lib/coverArtCache";
 
 interface ThisOrThatProps {
   isLoggedIn?: boolean;
   onPlay?: () => void;
 }
 
-export const ThisOrThat = ({ isLoggedIn = false, onPlay }: ThisOrThatProps) => {
+// Optimized cover art fetcher with caching
+const fetchCoverForItem = async (item: SearchResult): Promise<SearchResult & { coverUrl?: string }> => {
+  if (item.type === "album") {
+    const cacheKey = `album_${item.id}`;
+    let coverUrl = coverArtCache.get(cacheKey);
+    
+    if (coverUrl === undefined) {
+      coverUrl = await getCoverArt(item.id);
+      coverArtCache.set(cacheKey, coverUrl);
+    }
+    
+    return { ...item, coverUrl: coverUrl || undefined };
+  } else if (item.type === "song") {
+    const songCacheKey = `song_${item.id}`;
+    let coverUrl = coverArtCache.get(songCacheKey);
+    
+    if (coverUrl !== undefined) {
+      return { ...item, coverUrl: coverUrl || undefined };
+    }
+
+    try {
+      // Check recording cache first
+      let releaseInfo = recordingReleaseCache.get(item.id);
+      
+      if (releaseInfo === undefined) {
+        const recording = await getRecording(item.id);
+        if (recording?.releases?.[0]) {
+          const release = recording.releases[0];
+          const releaseGroupId = release["release-group"]?.id;
+          if (releaseGroupId) {
+            releaseInfo = { releaseGroupId, releaseId: release.id };
+          }
+        }
+        recordingReleaseCache.set(item.id, releaseInfo || null);
+      }
+
+      if (releaseInfo) {
+        coverUrl = await getCoverArt(releaseInfo.releaseGroupId, releaseInfo.releaseId);
+        coverArtCache.set(songCacheKey, coverUrl);
+        return { ...item, coverUrl: coverUrl || undefined };
+      }
+    } catch {
+      // Ignore errors
+    }
+    
+    coverArtCache.set(songCacheKey, null);
+  }
+  
+  return item;
+};
+
+export const ThisOrThat = memo(({ isLoggedIn = false, onPlay }: ThisOrThatProps) => {
   const [selectedType, setSelectedType] = useState<"song" | "album" | "artist">("song");
   const [isHovered, setIsHovered] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -33,7 +85,7 @@ export const ThisOrThat = ({ isLoggedIn = false, onPlay }: ThisOrThatProps) => {
 
   const searchTerms = ["love", "life", "heart", "night", "summer", "dream", "fire", "star", "dance", "happy"];
 
-  const fetchOptions = async () => {
+  const fetchOptions = useCallback(async () => {
     setLoading(true);
     try {
       const randomTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)];
@@ -47,39 +99,15 @@ export const ThisOrThat = ({ isLoggedIn = false, onPlay }: ThisOrThatProps) => {
         const shuffled = filteredResults.sort(() => 0.5 - Math.random());
         const selected = shuffled.slice(0, 2);
         
-        // Fetch cover art for all types
-        const withCovers = await Promise.all(
-          selected.map(async (item) => {
-            if (item.type === "album") {
-              // For albums, use the album ID directly
-              const coverUrl = await getCoverArt(item.id);
-              return { ...item, coverUrl };
-            } else if (item.type === "song") {
-              // For songs, fetch recording to get release-group ID
-              try {
-                const recording = await getRecording(item.id);
-                if (recording?.releases?.[0]) {
-                  const release = recording.releases[0];
-                  const releaseGroupId = release["release-group"]?.id;
-                  if (releaseGroupId) {
-                    const coverUrl = await getCoverArt(releaseGroupId, release.id);
-                    return { ...item, coverUrl };
-                  }
-                }
-              } catch {
-                // Ignore errors, just skip cover art
-              }
-            }
-            return item;
-          })
-        );
+        // Fetch cover art in parallel with caching
+        const withCovers = await Promise.all(selected.map(fetchCoverForItem));
         setOptions(withCovers);
       }
     } catch (error) {
       console.error("Error fetching options:", error);
     }
     setLoading(false);
-  };
+  }, [selectedType]);
 
   const handlePlay = () => {
     if (!user) {
@@ -350,4 +378,6 @@ export const ThisOrThat = ({ isLoggedIn = false, onPlay }: ThisOrThatProps) => {
       </div>
     </section>
   );
-};
+});
+
+ThisOrThat.displayName = "ThisOrThat";
