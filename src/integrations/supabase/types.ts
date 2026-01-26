@@ -712,6 +712,7 @@ export type Database = {
       get_public_stats: { Args: never; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
       is_following: { Args: { target_user_id: string }; Returns: boolean }
+      validate_message: { Args: { message_text: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
