@@ -8,6 +8,7 @@ import { BadgesSection } from "@/components/BadgesSection";
 import { FollowersModal } from "@/components/FollowersModal";
 import { AllRatingsModal } from "@/components/AllRatingsModal";
 import { FollowRequestsSection } from "@/components/FollowRequestsSection";
+import { ProfilePlaylists } from "@/components/ProfilePlaylists";
 import { Loader2, Calendar, Edit2, Check, X, Users, Plus, Lock, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -484,6 +485,9 @@ const Profile = () => {
                   </div>
                 </div>
 
+                {/* Playlists */}
+                <ProfilePlaylists userId={displayUserId} isOwnProfile={isOwnProfile} />
+
                 {/* Badges */}
                 <BadgesSection 
                   userId={displayUserId} 
@@ -511,7 +515,7 @@ const Profile = () => {
         onClose={() => setFollowingModalOpen(false)}
         isProfilePrivate={profileData?.is_private}
       />
-      {isOwnProfile && displayUserId && (
+      {displayUserId && (
         <AllRatingsModal
           userId={displayUserId}
           isOpen={allRatingsModalOpen}

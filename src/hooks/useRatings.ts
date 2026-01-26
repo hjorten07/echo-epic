@@ -64,25 +64,64 @@ export const useItemRating = (itemType: string, itemId: string) => {
   });
 };
 
+export const usePlatformSettings = () => {
+  return useQuery({
+    queryKey: ["platform-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("platform_settings")
+        .select("*")
+        .eq("id", "default")
+        .maybeSingle();
+
+      if (error) throw error;
+      return data || { min_ratings_for_ranking: 50, global_avg_rating: 7.0 };
+    },
+  });
+};
+
 export const useTopRatings = (itemType: "artist" | "album" | "song", limit = 100) => {
   return useQuery({
     queryKey: ["top-ratings", itemType, limit],
     queryFn: async () => {
-      // Order by total_ratings first (weight), then by avg_rating
+      // First get platform settings for Bayesian calculation
+      const { data: settings } = await supabase
+        .from("platform_settings")
+        .select("*")
+        .eq("id", "default")
+        .maybeSingle();
+
+      const minRatings = settings?.min_ratings_for_ranking || 50;
+      const globalAvg = settings?.global_avg_rating || 7.0;
+
+      // Get all items with at least 1 rating
       const { data, error } = await supabase
         .from("item_ratings")
         .select("*")
         .eq("item_type", itemType)
-        .gte("total_ratings", 1) // Only show items with at least 1 rating
-        .order("total_ratings", { ascending: false })
-        .order("avg_rating", { ascending: false })
-        .limit(limit);
+        .gte("total_ratings", 1);
 
       if (error) {
         console.error("Error fetching top ratings:", error);
         throw error;
       }
-      return (data || []) as ItemRating[];
+
+      // Apply Bayesian weighted ranking: (v / (v + m)) * R + (m / (v + m)) * C
+      // Only include items that meet the minimum ratings threshold
+      const itemsWithWeightedScore = (data || [])
+        .filter(item => item.total_ratings >= minRatings)
+        .map(item => {
+          const v = item.total_ratings;
+          const R = item.avg_rating;
+          const m = minRatings;
+          const C = globalAvg;
+          const weightedScore = (v / (v + m)) * R + (m / (v + m)) * C;
+          return { ...item, weightedScore };
+        })
+        .sort((a, b) => b.weightedScore - a.weightedScore)
+        .slice(0, limit);
+
+      return itemsWithWeightedScore as (ItemRating & { weightedScore: number })[];
     },
   });
 };
