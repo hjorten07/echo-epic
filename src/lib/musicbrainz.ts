@@ -364,7 +364,7 @@ export async function getReleasesForGroup(releaseGroupId: string): Promise<Music
 export async function getRecording(id: string): Promise<MusicBrainzRecording | null> {
   try {
     const response = await rateLimitedFetch(
-      `${BASE_URL}/recording/${id}?inc=artists+releases+tags+ratings&fmt=json`
+      `${BASE_URL}/recording/${id}?inc=artists+releases+release-groups+tags+ratings&fmt=json`
     );
     
     if (!response.ok) throw new Error("Failed to get recording");
