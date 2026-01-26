@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { RatingItemImage } from "@/components/RatingItemImage";
 
 interface RatedItem {
   item_id: string;
@@ -263,17 +264,13 @@ export const HigherLowerGame = () => {
         {/* Current Item */}
         <div className="flex-1 glass-card rounded-xl p-4 text-center">
           <div className="aspect-square rounded-lg bg-secondary overflow-hidden mb-3">
-            {currentItem.item_image ? (
-              <img
-                src={currentItem.item_image}
-                alt={currentItem.item_name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-4xl font-display font-bold text-muted-foreground/30">
-                {currentItem.item_name[0]?.toUpperCase()}
-              </div>
-            )}
+            <RatingItemImage
+              itemId={currentItem.item_id}
+              itemType={currentItem.item_type as "artist" | "album" | "song"}
+              itemImage={currentItem.item_image}
+              itemName={currentItem.item_name}
+              className="w-full h-full"
+            />
           </div>
           <h3 className="font-display font-semibold truncate">{currentItem.item_name}</h3>
           {currentItem.item_subtitle && (
@@ -316,17 +313,13 @@ export const HigherLowerGame = () => {
           )}
         >
           <div className="aspect-square rounded-lg bg-secondary overflow-hidden mb-3">
-            {nextItem.item_image ? (
-              <img
-                src={nextItem.item_image}
-                alt={nextItem.item_name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-4xl font-display font-bold text-muted-foreground/30">
-                {nextItem.item_name[0]?.toUpperCase()}
-              </div>
-            )}
+            <RatingItemImage
+              itemId={nextItem.item_id}
+              itemType={nextItem.item_type as "artist" | "album" | "song"}
+              itemImage={nextItem.item_image}
+              itemName={nextItem.item_name}
+              className="w-full h-full"
+            />
           </div>
           <h3 className="font-display font-semibold truncate">{nextItem.item_name}</h3>
           {nextItem.item_subtitle && (

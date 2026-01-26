@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { StarRating } from "./StarRating";
+import { RatingItemImage } from "./RatingItemImage";
 import { formatDistanceToNow } from "date-fns";
 
 interface RatingItem {
@@ -41,20 +42,13 @@ export const RecentlyRated = ({ items }: RecentlyRatedProps) => {
           >
             {/* Item Image */}
             <Link to={`/${item.type}/${item.id}`} className="shrink-0">
-              <div className="w-16 h-16 rounded-lg overflow-hidden bg-secondary">
-                {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    loading="lazy"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground font-display font-bold">
-                    {item.name[0]?.toUpperCase()}
-                  </div>
-                )}
-              </div>
+              <RatingItemImage
+                itemId={item.id}
+                itemType={item.type}
+                itemImage={item.imageUrl || null}
+                itemName={item.name}
+                className="w-16 h-16"
+              />
             </Link>
 
             {/* Content */}
