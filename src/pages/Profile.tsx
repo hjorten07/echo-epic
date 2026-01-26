@@ -8,6 +8,7 @@ import { BadgesSection } from "@/components/BadgesSection";
 import { FollowersModal } from "@/components/FollowersModal";
 import { AllRatingsModal } from "@/components/AllRatingsModal";
 import { FollowRequestsSection } from "@/components/FollowRequestsSection";
+import { RatingItemImage } from "@/components/RatingItemImage";
 import { ProfilePlaylists } from "@/components/ProfilePlaylists";
 import { Loader2, Calendar, Edit2, Check, X, Users, Plus, Lock, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -454,13 +455,12 @@ const Profile = () => {
                           <span className="w-6 text-center font-semibold text-muted-foreground">
                             {index + 1}
                           </span>
-                          <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden">
-                            {rating.item_image ? (
-                              <img src={rating.item_image} alt={rating.item_name} className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="text-xs font-bold">{rating.item_name[0]}</span>
-                            )}
-                          </div>
+                          <RatingItemImage
+                            itemId={rating.item_id}
+                            itemType={rating.item_type}
+                            itemImage={rating.item_image}
+                            itemName={rating.item_name}
+                          />
                           <span className="flex-1 font-medium truncate">{rating.item_name}</span>
                           <StarRating rating={rating.rating} readonly size="sm" showValue />
                         </Link>

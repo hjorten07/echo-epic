@@ -5,7 +5,7 @@ import { Music2, Disc3, Mic2, Shuffle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { searchAll, SearchResult, getCoverArt } from "@/lib/musicbrainz";
+import { searchAll, SearchResult, getCoverArt, getRecording } from "@/lib/musicbrainz";
 import { useRateMutation } from "@/hooks/useRatings";
 import { toast } from "sonner";
 
@@ -50,10 +50,25 @@ export const ThisOrThat = ({ isLoggedIn = false, onPlay }: ThisOrThatProps) => {
         // Fetch cover art for all types
         const withCovers = await Promise.all(
           selected.map(async (item) => {
-            // For albums and songs, try to get cover art
-            if (item.type === "album" || item.type === "song") {
+            if (item.type === "album") {
+              // For albums, use the album ID directly
               const coverUrl = await getCoverArt(item.id);
               return { ...item, coverUrl };
+            } else if (item.type === "song") {
+              // For songs, fetch recording to get release-group ID
+              try {
+                const recording = await getRecording(item.id);
+                if (recording?.releases?.[0]) {
+                  const release = recording.releases[0];
+                  const releaseGroupId = release["release-group"]?.id;
+                  if (releaseGroupId) {
+                    const coverUrl = await getCoverArt(releaseGroupId, release.id);
+                    return { ...item, coverUrl };
+                  }
+                }
+              } catch {
+                // Ignore errors, just skip cover art
+              }
             }
             return item;
           })
