@@ -26,10 +26,14 @@ const Song = () => {
       const recordingData = await getRecording(id);
       setSong(recordingData);
 
-      // Try to get cover art from the first release's release group
-      if (recordingData?.releases?.[0]?.["release-group"]?.id) {
-        const cover = await getCoverArt(recordingData.releases[0]["release-group"].id);
-        setCoverUrl(cover);
+      // Try to get cover art from the first release's release group (with fallback to release)
+      if (recordingData?.releases?.[0]) {
+        const release = recordingData.releases[0];
+        const releaseGroupId = release["release-group"]?.id;
+        if (releaseGroupId) {
+          const cover = await getCoverArt(releaseGroupId, release.id);
+          setCoverUrl(cover);
+        }
       }
 
       setLoading(false);

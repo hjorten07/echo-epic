@@ -377,18 +377,36 @@ export async function getRecording(id: string): Promise<MusicBrainzRecording | n
 }
 
 // Get cover art for a release group (CC0 from Cover Art Archive)
-export async function getCoverArt(releaseGroupId: string): Promise<string | null> {
+export async function getCoverArt(releaseGroupId: string, releaseId?: string): Promise<string | null> {
   try {
+    // First try release-group
     const response = await fetch(
       `${COVER_ART_URL}/release-group/${releaseGroupId}`,
       { headers: { Accept: "application/json" } }
     );
     
-    if (!response.ok) return null;
+    if (response.ok) {
+      const data = await response.json();
+      const front = data.images?.find((img: { front?: boolean }) => img.front);
+      const url = front?.thumbnails?.small || front?.image || data.images?.[0]?.thumbnails?.small || null;
+      if (url) return url;
+    }
     
-    const data = await response.json();
-    const front = data.images?.find((img: { front?: boolean }) => img.front);
-    return front?.thumbnails?.small || front?.image || data.images?.[0]?.thumbnails?.small || null;
+    // Fallback: try release directly if release-group has no art
+    if (releaseId) {
+      const releaseResponse = await fetch(
+        `${COVER_ART_URL}/release/${releaseId}`,
+        { headers: { Accept: "application/json" } }
+      );
+      
+      if (releaseResponse.ok) {
+        const releaseData = await releaseResponse.json();
+        const front = releaseData.images?.find((img: { front?: boolean }) => img.front);
+        return front?.thumbnails?.small || front?.image || releaseData.images?.[0]?.thumbnails?.small || null;
+      }
+    }
+    
+    return null;
   } catch {
     return null;
   }
