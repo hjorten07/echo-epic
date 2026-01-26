@@ -109,6 +109,13 @@ const Top100 = () => {
                     totalRatings={Number(item.total_ratings)}
                     subtitle={item.item_subtitle || undefined}
                   />
+                  
+                  {/* Weighted Score Display */}
+                  {'weightedScore' in item && (
+                    <div className="mt-1 text-center text-xs text-muted-foreground">
+                      Weighted: {item.weightedScore.toFixed(2)}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

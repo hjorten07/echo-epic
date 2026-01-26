@@ -178,7 +178,7 @@ export const MessagesDropdown = () => {
         {/* Open Messages Button */}
         <div className="border-t border-border p-2">
           <Link
-            to="/conversations"
+            to="/messages"
             className="flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors"
           >
             Open Messages

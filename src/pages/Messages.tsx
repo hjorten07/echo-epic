@@ -248,6 +248,30 @@ const Messages = () => {
     }
   };
 
+  const handleReportConversation = async () => {
+    if (!reportReason.trim() || !user || !partnerId || !partner) return;
+
+    // Create a report with the entire conversation context
+    const conversationPreview = messages.slice(-10).map(m => 
+      `[${m.sender_id === user.id ? 'You' : partner.username}]: ${m.content.substring(0, 50)}`
+    ).join('\n');
+
+    const { error } = await supabase.from("reports").insert({
+      reporter_id: user.id,
+      reported_user_id: partnerId,
+      reason: `Conversation report with ${partner.username}:\n\nReason: ${reportReason}\n\nRecent messages (last 10):\n${conversationPreview}\n\n[Admin: View full conversation in database - partner_id: ${partnerId}, reporter_id: ${user.id}]`,
+    });
+
+    if (error) {
+      toast.error("Failed to submit report");
+    } else {
+      toast.success("Conversation reported. Our team will review the full conversation.");
+      setReportDialogOpen(false);
+      setReportingMessage(null);
+      setReportReason("");
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -263,7 +287,7 @@ const Messages = () => {
             </Button>
             
             {partner && (
-              <Link to={`/user/${partner.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <Link to={`/user/${partner.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity flex-1">
                 <div className="w-10 h-10 rounded-full bg-secondary overflow-hidden ring-2 ring-primary/30">
                   {partner.avatar_url ? (
                     <img src={partner.avatar_url} alt={partner.username} className="w-full h-full object-cover" />
@@ -276,6 +300,20 @@ const Messages = () => {
                 <span className="font-semibold">{partner.username}</span>
               </Link>
             )}
+
+            {/* Report Conversation Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => {
+                setReportingMessage(null);
+                setReportDialogOpen(true);
+              }}
+            >
+              <Flag className="w-4 h-4 mr-1" />
+              Report
+            </Button>
           </div>
 
           {/* Messages */}
@@ -411,14 +449,20 @@ const Messages = () => {
       <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Report Message</DialogTitle>
+            <DialogTitle>{reportingMessage ? "Report Message" : "Report Conversation"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="p-3 rounded-lg bg-secondary/50 text-sm">
-              "{reportingMessage?.content.substring(0, 100)}..."
-            </div>
+            {reportingMessage ? (
+              <div className="p-3 rounded-lg bg-secondary/50 text-sm">
+                "{reportingMessage?.content.substring(0, 100)}..."
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                This will report the entire conversation with {partner?.username}. Our team will be able to review all messages, including deleted ones.
+              </p>
+            )}
             <Textarea
-              placeholder="Why are you reporting this message?"
+              placeholder={reportingMessage ? "Why are you reporting this message?" : "Why are you reporting this conversation?"}
               value={reportReason}
               onChange={(e) => setReportReason(e.target.value)}
               rows={3}
@@ -429,7 +473,7 @@ const Messages = () => {
               </Button>
               <Button 
                 variant="destructive" 
-                onClick={handleReportMessage}
+                onClick={reportingMessage ? handleReportMessage : handleReportConversation}
                 disabled={!reportReason.trim()}
               >
                 Submit Report
