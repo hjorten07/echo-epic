@@ -508,6 +508,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string | null
+          game_wins: number | null
           id: string
           is_private: boolean | null
           username: string
@@ -516,6 +517,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string | null
+          game_wins?: number | null
           id: string
           is_private?: boolean | null
           username: string
@@ -524,6 +526,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string | null
+          game_wins?: number | null
           id?: string
           is_private?: boolean | null
           username?: string

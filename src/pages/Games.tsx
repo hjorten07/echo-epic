@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Gamepad2, Shuffle, ArrowUpDown } from "lucide-react";
+import { Gamepad2, Shuffle, ArrowUpDown, Zap } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ThisOrThat } from "@/components/ThisOrThat";
 import { HigherLowerGame } from "@/components/HigherLowerGame";
+import { SongRushGame } from "@/components/SongRush/SongRushGame";
 import { cn } from "@/lib/utils";
 
-type GameType = "this-or-that" | "higher-lower";
+type GameType = "this-or-that" | "higher-lower" | "song-rush";
 
 const Games = () => {
   const [selectedGame, setSelectedGame] = useState<GameType>("this-or-that");
@@ -22,6 +23,12 @@ const Games = () => {
       name: "Higher or Lower",
       description: "Guess which has the higher community rating",
       icon: ArrowUpDown,
+    },
+    {
+      id: "song-rush" as const,
+      name: "Song Rush",
+      description: "Multiplayer: find songs for themes",
+      icon: Zap,
     },
   ];
 
@@ -73,6 +80,7 @@ const Games = () => {
           <div className="max-w-4xl mx-auto">
             {selectedGame === "this-or-that" && <ThisOrThat />}
             {selectedGame === "higher-lower" && <HigherLowerGame />}
+            {selectedGame === "song-rush" && <SongRushGame />}
           </div>
         </div>
       </main>
