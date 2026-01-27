@@ -34,6 +34,7 @@ const extraThemes: ThemeOption[] = [
   { id: "teal", name: "Teal", colors: ["#0a1414", "#14b8a6", "#2dd4bf"] },
   { id: "amber", name: "Amber", colors: ["#1a1408", "#f59e0b", "#fbbf24"] },
   { id: "light", name: "Light Mode", colors: ["#f8fafc", "#3b82f6", "#60a5fa"] },
+  { id: "slate-blue", name: "Slate Blue", colors: ["#2a3a4d", "#7b9ab8", "#d4dce4"] },
 ];
 
 const AccountSection = () => {

@@ -1,18 +1,39 @@
 import { Link } from "react-router-dom";
-import { Loader2, UserPlus, Heart } from "lucide-react";
+import { Loader2, UserPlus, Heart, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSimilarUsers } from "@/hooks/useSocialFeatures";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 export const SimilarTaste = () => {
   const { user, profile } = useAuth();
   const { data: similarUsers, isLoading } = useSimilarUsers();
   const queryClient = useQueryClient();
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+
+  // Fetch existing follows
+  const { data: existingFollows } = useQuery({
+    queryKey: ["user-follows", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await supabase
+        .from("follows")
+        .select("following_id")
+        .eq("follower_id", user.id);
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Update followingIds when existingFollows changes
+  useEffect(() => {
+    if (existingFollows) {
+      setFollowingIds(new Set(existingFollows.map(f => f.following_id)));
+    }
+  }, [existingFollows]);
 
   if (!user) {
     return (
@@ -104,7 +125,16 @@ export const SimilarTaste = () => {
               </div>
             </div>
 
-            {!followingIds.has(similarUser.user_id) && (
+            {followingIds.has(similarUser.user_id) ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled
+              >
+                <Check className="w-4 h-4 mr-1" />
+                Following
+              </Button>
+            ) : (
               <Button
                 size="sm"
                 onClick={() => handleFollow(similarUser.user_id)}

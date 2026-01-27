@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Disc3, Music2, Loader2, Sparkles, TrendingUp, Users } from "lucide-react";
+import { Disc3, Music2, Loader2, Sparkles, TrendingUp, Users, RefreshCw } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -11,71 +11,129 @@ import {
   getTopArtists,
   getTopReleaseGroups,
   getSimilarArtists,
+  getSimilarRecordings,
 } from "@/lib/listenbrainz";
-import { getCoverArt } from "@/lib/musicbrainz";
+import { getCoverArt, getRecording } from "@/lib/musicbrainz";
 import { cn } from "@/lib/utils";
 
 type RecommendationType = "forYou" | "trending" | "topArtists" | "topAlbums";
 
 const Recommendations = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<RecommendationType>("forYou");
 
-  // Fetch user's highly rated artists for personalized recommendations
-  const { data: userTopArtists } = useQuery({
-    queryKey: ["user-top-artists", user?.id],
+  // Fetch user's highly rated items for personalized recommendations
+  const { data: userRatings } = useQuery({
+    queryKey: ["user-ratings-for-recs", user?.id],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user) return { artists: [], songs: [] };
       
-      const { data } = await supabase
+      // Get top rated artists
+      const { data: artists } = await supabase
         .from("ratings")
-        .select("item_type, item_id, item_name, item_subtitle, rating")
+        .select("item_id, item_name, rating")
         .eq("user_id", user.id)
         .eq("item_type", "artist")
         .gte("rating", 7)
         .order("rating", { ascending: false })
         .limit(5);
       
-      return data || [];
+      // Get top rated songs
+      const { data: songs } = await supabase
+        .from("ratings")
+        .select("item_id, item_name, rating")
+        .eq("user_id", user.id)
+        .eq("item_type", "song")
+        .gte("rating", 7)
+        .order("rating", { ascending: false })
+        .limit(5);
+      
+      return { 
+        artists: artists || [], 
+        songs: songs || [] 
+      };
     },
     enabled: !!user,
   });
 
-  // Fetch personalized recommendations based on user's favorite artists
-  const { data: personalizedRecs, isLoading: personalizedLoading } = useQuery({
-    queryKey: ["personalized-recs", userTopArtists],
+  // Fetch personalized recommendations based on user's favorite artists AND songs
+  const { data: personalizedRecs, isLoading: personalizedLoading, refetch: refetchPersonalized } = useQuery({
+    queryKey: ["personalized-recs-v2", userRatings],
     queryFn: async () => {
-      if (!userTopArtists || userTopArtists.length === 0) {
+      if (!userRatings || (userRatings.artists.length === 0 && userRatings.songs.length === 0)) {
         // Fallback to trending if no user data
         return getTopRecordings("week", 20);
       }
 
-      // Get similar artists for the user's top rated artists
-      const allSimilar: { artist_mbid: string; artist_name: string; score: number }[] = [];
+      const recommendations: { 
+        recording_mbid: string; 
+        recording_name: string; 
+        artist_name: string; 
+        score: number;
+        source: string;
+      }[] = [];
       
-      for (const rating of userTopArtists.slice(0, 3)) {
-        // Only use MusicBrainz IDs (not custom artists)
+      // Get similar artists for user's favorite artists
+      for (const rating of userRatings.artists.slice(0, 3)) {
         if (!rating.item_id.startsWith("custom_")) {
-          const similar = await getSimilarArtists(rating.item_id, 5);
-          allSimilar.push(...similar);
+          try {
+            const similar = await getSimilarArtists(rating.item_id, 4);
+            similar.forEach((a) => {
+              recommendations.push({
+                recording_mbid: a.artist_mbid,
+                recording_name: a.artist_name,
+                artist_name: `Similar to ${rating.item_name}`,
+                score: a.score,
+                source: "artist",
+              });
+            });
+          } catch (e) {
+            console.log("Error fetching similar artists:", e);
+          }
+        }
+      }
+
+      // Get similar songs for user's favorite songs
+      for (const rating of userRatings.songs.slice(0, 3)) {
+        if (!rating.item_id.startsWith("custom_")) {
+          try {
+            const similar = await getSimilarRecordings(rating.item_id, 4);
+            similar.forEach((r) => {
+              recommendations.push({
+                recording_mbid: r.recording_mbid,
+                recording_name: r.recording_name || "Unknown",
+                artist_name: r.artist_name || `Similar to ${rating.item_name}`,
+                score: r.score || 0,
+                source: "song",
+              });
+            });
+          } catch (e) {
+            console.log("Error fetching similar songs:", e);
+          }
         }
       }
       
-      // If we found similar artists, return them
-      if (allSimilar.length > 0) {
-        return allSimilar.slice(0, 20).map((a) => ({
-          recording_mbid: a.artist_mbid,
-          recording_name: a.artist_name,
-          artist_name: "Similar Artist",
-          score: a.score,
-        }));
+      // Remove duplicates and shuffle
+      const uniqueRecs = recommendations.reduce((acc, rec) => {
+        if (!acc.find(r => r.recording_mbid === rec.recording_mbid)) {
+          acc.push(rec);
+        }
+        return acc;
+      }, [] as typeof recommendations);
+
+      // Shuffle and return top 20
+      const shuffled = uniqueRecs.sort(() => Math.random() - 0.5);
+      
+      if (shuffled.length === 0) {
+        // Fallback to trending
+        return getTopRecordings("week", 20);
       }
       
-      // Fallback to trending
-      return getTopRecordings("week", 20);
+      return shuffled.slice(0, 20);
     },
     enabled: true,
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 1000 * 60 * 5, // 5 minutes - shorter for freshness
   });
 
   // Fetch trending songs from ListenBrainz
@@ -147,32 +205,62 @@ const Recommendations = () => {
             </div>
           );
         }
+
+        const hasUserData = userRatings && (userRatings.artists.length > 0 || userRatings.songs.length > 0);
         
         return (
-          <div className="space-y-3">
-            {personalizedRecs?.map((rec, index) => (
-              <Link
-                key={rec.recording_mbid || index}
-                to={rec.artist_name === "Similar Artist" 
-                  ? `/artist/${rec.recording_mbid}` 
-                  : `/song/${rec.recording_mbid}`}
-                className="flex items-center gap-4 p-4 rounded-xl glass-card hover:border-primary/30 transition-all"
-              >
-                <span className={cn(
-                  "w-8 text-center font-bold",
-                  index < 3 ? "text-primary" : "text-muted-foreground"
-                )}>
-                  {index + 1}
-                </span>
-                <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center shrink-0">
-                  <Music2 className="w-6 h-6 text-muted-foreground/50" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{rec.recording_name}</p>
-                  <p className="text-sm text-muted-foreground truncate">{rec.artist_name}</p>
-                </div>
-              </Link>
-            ))}
+          <div className="space-y-4">
+            {hasUserData && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Based on your {userRatings.artists.length} favorite artist{userRatings.artists.length !== 1 ? 's' : ''} and {userRatings.songs.length} favorite song{userRatings.songs.length !== 1 ? 's' : ''}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => refetchPersonalized()}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Refresh
+                </Button>
+              </div>
+            )}
+            {!hasUserData && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Rate some artists and songs to get personalized recommendations! Showing trending music for now.
+              </p>
+            )}
+            <div className="space-y-3">
+              {personalizedRecs?.map((rec: any, index: number) => {
+                // Determine link based on source type
+                const linkPath = rec.source === "artist" 
+                  ? `/artist/${rec.recording_mbid}`
+                  : `/song/${rec.recording_mbid}`;
+                
+                return (
+                  <Link
+                    key={rec.recording_mbid || index}
+                    to={linkPath}
+                    className="flex items-center gap-4 p-4 rounded-xl glass-card hover:border-primary/30 transition-all"
+                  >
+                    <span className={cn(
+                      "w-8 text-center font-bold",
+                      index < 3 ? "text-primary" : "text-muted-foreground"
+                    )}>
+                      {index + 1}
+                    </span>
+                    <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                      <Music2 className="w-6 h-6 text-muted-foreground/50" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{rec.recording_name}</p>
+                      <p className="text-sm text-muted-foreground truncate">{rec.artist_name}</p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         );
 
