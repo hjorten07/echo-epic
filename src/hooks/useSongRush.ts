@@ -87,15 +87,6 @@ const generateCode = () => {
   return code;
 };
 
-// Helper to access new tables that aren't in generated types yet
-const gameDb = {
-  lobbies: () => supabase.from("game_lobbies" as any),
-  players: () => supabase.from("game_players" as any),
-  submissions: () => supabase.from("game_submissions" as any),
-  votes: () => supabase.from("game_votes" as any),
-  chat: () => supabase.from("game_chat" as any),
-};
-
 export const useSongRush = () => {
   const { user, profile } = useAuth();
   const [lobby, setLobby] = useState<GameLobby | null>(null);
@@ -166,15 +157,28 @@ export const useSongRush = () => {
         "postgres_changes",
         { event: "*", schema: "public", table: "game_players", filter: `lobby_id=eq.${lobbyId}` },
         async () => {
-          // Refetch players with profiles
-          const { data } = await gameDb.players()
-            .select("*, profile:profiles(username, avatar_url)")
+          // Refetch players - use user_id to manually join profiles
+          const { data } = await supabase
+            .from("game_players")
+            .select("*")
             .eq("lobby_id", lobbyId);
           if (data) {
-            const typedData = data as any[];
-            setPlayers(typedData.map(p => ({ ...p, profile: p.profile })));
+            // Fetch profiles for each player
+            const playerIds = data.map(p => p.user_id);
+            const { data: profiles } = await supabase
+              .from("profiles")
+              .select("id, username, avatar_url")
+              .in("id", playerIds);
+            
+            const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+            const typedData = data.map(p => ({
+              ...p,
+              profile: profileMap.get(p.user_id) || undefined,
+            })) as GamePlayer[];
+            
+            setPlayers(typedData);
             const me = typedData.find(p => p.user_id === user?.id);
-            if (me) setMyPlayer({ ...me, profile: me.profile });
+            if (me) setMyPlayer(me);
           }
         }
       )
@@ -182,20 +186,22 @@ export const useSongRush = () => {
         "postgres_changes",
         { event: "*", schema: "public", table: "game_submissions", filter: `lobby_id=eq.${lobbyId}` },
         async () => {
-          const { data } = await gameDb.submissions()
+          const { data } = await supabase
+            .from("game_submissions")
             .select("*")
             .eq("lobby_id", lobbyId);
-          if (data) setSubmissions(data as unknown as GameSubmission[]);
+          if (data) setSubmissions(data as GameSubmission[]);
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "game_votes", filter: `lobby_id=eq.${lobbyId}` },
         async () => {
-          const { data } = await gameDb.votes()
+          const { data } = await supabase
+            .from("game_votes")
             .select("*")
             .eq("lobby_id", lobbyId);
-          if (data) setVotes(data as unknown as GameVote[]);
+          if (data) setVotes(data as GameVote[]);
         }
       )
       .on(
@@ -223,7 +229,8 @@ export const useSongRush = () => {
     setIsLoading(true);
     const code = generateCode();
 
-    const { data: lobbyData, error: lobbyError } = await gameDb.lobbies()
+    const { data: lobbyData, error: lobbyError } = await supabase
+      .from("game_lobbies")
       .insert({
         code,
         host_id: user.id,
@@ -233,32 +240,45 @@ export const useSongRush = () => {
       .single();
 
     if (lobbyError) {
+      console.error("Lobby creation error:", lobbyError);
       toast.error("Failed to create lobby");
       setIsLoading(false);
       return null;
     }
 
     // Join as player
-    const { data: playerData, error: playerError } = await gameDb.players()
+    const { data: playerData, error: playerError } = await supabase
+      .from("game_players")
       .insert({
-        lobby_id: (lobbyData as any).id,
+        lobby_id: lobbyData.id,
         user_id: user.id,
       })
-      .select("*, profile:profiles(username, avatar_url)")
+      .select("*")
       .single();
 
     if (playerError) {
+      console.error("Player join error:", playerError);
       toast.error("Failed to join lobby");
       setIsLoading(false);
       return null;
     }
 
+    // Fetch profile for the player
+    const { data: profileInfo } = await supabase
+      .from("profiles")
+      .select("username, avatar_url")
+      .eq("id", user.id)
+      .single();
+
     const typedLobby = lobbyData as unknown as GameLobby;
-    const typedPlayer = playerData as any;
+    const typedPlayer: GamePlayer = {
+      ...playerData,
+      profile: profileInfo || undefined,
+    };
 
     setLobby(typedLobby);
-    setMyPlayer({ ...typedPlayer, profile: typedPlayer.profile });
-    setPlayers([{ ...typedPlayer, profile: typedPlayer.profile }]);
+    setMyPlayer(typedPlayer);
+    setPlayers([typedPlayer]);
     subscribeToLobby(typedLobby.id);
     setIsLoading(false);
 
@@ -273,11 +293,12 @@ export const useSongRush = () => {
 
     setIsLoading(true);
 
-    const { data: lobbyData, error: lobbyError } = await gameDb.lobbies()
+    const { data: lobbyData, error: lobbyError } = await supabase
+      .from("game_lobbies")
       .select("*")
       .eq("code", code.toUpperCase())
       .eq("status", "waiting")
-      .single();
+      .maybeSingle();
 
     if (lobbyError || !lobbyData) {
       toast.error("Lobby not found or already started");
@@ -285,12 +306,11 @@ export const useSongRush = () => {
       return false;
     }
 
-    const typedLobbyData = lobbyData as any;
-
     // Check player count
-    const { count } = await gameDb.players()
+    const { count } = await supabase
+      .from("game_players")
       .select("*", { count: "exact", head: true })
-      .eq("lobby_id", typedLobbyData.id);
+      .eq("lobby_id", lobbyData.id);
 
     if (count && count >= 6) {
       toast.error("Lobby is full (max 6 players)");
@@ -299,36 +319,53 @@ export const useSongRush = () => {
     }
 
     // Join as player
-    const { data: playerData, error: playerError } = await gameDb.players()
+    const { data: playerData, error: playerError } = await supabase
+      .from("game_players")
       .insert({
-        lobby_id: typedLobbyData.id,
+        lobby_id: lobbyData.id,
         user_id: user.id,
       })
-      .select("*, profile:profiles(username, avatar_url)")
+      .select("*")
       .single();
 
     if (playerError) {
       if (playerError.code === "23505") {
         toast.error("You're already in this lobby");
       } else {
+        console.error("Join error:", playerError);
         toast.error("Failed to join lobby");
       }
       setIsLoading(false);
       return false;
     }
 
-    // Fetch all players
-    const { data: allPlayers } = await gameDb.players()
-      .select("*, profile:profiles(username, avatar_url)")
-      .eq("lobby_id", typedLobbyData.id);
+    // Fetch all players and their profiles
+    const { data: allPlayers } = await supabase
+      .from("game_players")
+      .select("*")
+      .eq("lobby_id", lobbyData.id);
+
+    const playerIds = allPlayers?.map(p => p.user_id) || [];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, username, avatar_url")
+      .in("id", playerIds);
+    
+    const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
     const typedLobby = lobbyData as unknown as GameLobby;
-    const typedPlayer = playerData as any;
-    const typedAllPlayers = (allPlayers || []) as any[];
+    const typedPlayer: GamePlayer = {
+      ...playerData,
+      profile: profileMap.get(user.id) || undefined,
+    };
+    const typedAllPlayers = (allPlayers || []).map(p => ({
+      ...p,
+      profile: profileMap.get(p.user_id) || undefined,
+    })) as GamePlayer[];
 
     setLobby(typedLobby);
-    setMyPlayer({ ...typedPlayer, profile: typedPlayer.profile });
-    setPlayers(typedAllPlayers.map(p => ({ ...p, profile: p.profile })));
+    setMyPlayer(typedPlayer);
+    setPlayers(typedAllPlayers);
     subscribeToLobby(typedLobby.id);
     setIsLoading(false);
 
@@ -344,7 +381,8 @@ export const useSongRush = () => {
     setIsLoading(true);
 
     // Find a public lobby with space
-    const { data: lobbies } = await gameDb.lobbies()
+    const { data: lobbies } = await supabase
+      .from("game_lobbies")
       .select("*")
       .eq("is_private", false)
       .eq("status", "waiting")
@@ -352,8 +390,9 @@ export const useSongRush = () => {
 
     if (lobbies && lobbies.length > 0) {
       // Check each lobby for space
-      for (const l of lobbies as unknown as GameLobby[]) {
-        const { count } = await gameDb.players()
+      for (const l of lobbies as GameLobby[]) {
+        const { count } = await supabase
+          .from("game_players")
           .select("*", { count: "exact", head: true })
           .eq("lobby_id", l.id);
 
@@ -373,11 +412,11 @@ export const useSongRush = () => {
   const leaveLobby = useCallback(async () => {
     if (!lobby || !myPlayer) return;
 
-    await gameDb.players().delete().eq("id", myPlayer.id);
+    await supabase.from("game_players").delete().eq("id", myPlayer.id);
 
     // If host leaves, delete the lobby
     if (lobby.host_id === user?.id) {
-      await gameDb.lobbies().delete().eq("id", lobby.id);
+      await supabase.from("game_lobbies").delete().eq("id", lobby.id);
     }
 
     if (channelRef.current) {
@@ -405,7 +444,8 @@ export const useSongRush = () => {
     const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
     const roundEnd = new Date(Date.now() + 120 * 1000).toISOString();
 
-    await gameDb.lobbies()
+    await supabase
+      .from("game_lobbies")
       .update({
         status: "submitting",
         theme,
@@ -417,7 +457,7 @@ export const useSongRush = () => {
   const submitSong = useCallback(async (song: { id: string; name: string; artist?: string; image?: string }) => {
     if (!lobby || !myPlayer) return false;
 
-    const { error } = await gameDb.submissions().insert({
+    const { error } = await supabase.from("game_submissions").insert({
       lobby_id: lobby.id,
       player_id: myPlayer.id,
       round: lobby.current_round,
@@ -450,7 +490,7 @@ export const useSongRush = () => {
       return false;
     }
 
-    const { error } = await gameDb.votes().insert({
+    const { error } = await supabase.from("game_votes").insert({
       lobby_id: lobby.id,
       voter_id: myPlayer.id,
       submission_id: submissionId,
@@ -473,7 +513,7 @@ export const useSongRush = () => {
   const sendChat = useCallback(async (message: string) => {
     if (!lobby || !user) return;
 
-    await gameDb.chat().insert({
+    await supabase.from("game_chat").insert({
       lobby_id: lobby.id,
       user_id: user.id,
       message,
@@ -485,7 +525,8 @@ export const useSongRush = () => {
 
     const roundEnd = new Date(Date.now() + 60 * 1000).toISOString();
 
-    await gameDb.lobbies()
+    await supabase
+      .from("game_lobbies")
       .update({
         status: "voting",
         round_end_at: roundEnd,
@@ -520,7 +561,8 @@ export const useSongRush = () => {
     if (winnerId) {
       const winner = players.find(p => p.id === winnerId);
       if (winner) {
-        await gameDb.players()
+        await supabase
+          .from("game_players")
           .update({ 
             score: winner.score + maxPoints,
             wins: winner.wins + 1 
@@ -532,14 +574,15 @@ export const useSongRush = () => {
         // Check if someone reached 2 wins
         if (winner.wins + 1 >= 2) {
           // Game over
-          await gameDb.lobbies()
+          await supabase
+            .from("game_lobbies")
             .update({ status: "finished" })
             .eq("id", lobby.id);
 
           // Update profile game wins
           await supabase
             .from("profiles")
-            .update({ game_wins: ((profile as any)?.game_wins || 0) + 1 })
+            .update({ game_wins: ((profile as { game_wins?: number })?.game_wins || 0) + 1 })
             .eq("id", winner.user_id);
 
           toast.success(`${winner.profile?.username || "Player"} wins the game!`);
@@ -549,7 +592,8 @@ export const useSongRush = () => {
     }
 
     // Show results
-    await gameDb.lobbies()
+    await supabase
+      .from("game_lobbies")
       .update({
         status: "results",
         round_end_at: new Date(Date.now() + 10 * 1000).toISOString(),
@@ -563,7 +607,8 @@ export const useSongRush = () => {
     const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
     const roundEnd = new Date(Date.now() + 120 * 1000).toISOString();
 
-    await gameDb.lobbies()
+    await supabase
+      .from("game_lobbies")
       .update({
         status: "submitting",
         theme,
