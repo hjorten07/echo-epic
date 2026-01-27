@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { HeroSection } from "@/components/HeroSection";
@@ -11,8 +11,6 @@ import { LazyImage } from "@/components/LazyImage";
 import { Loader2 } from "lucide-react";
 import { useRecentRatings } from "@/hooks/useRatings";
 import { useQuery } from "@tanstack/react-query";
-import { getTopRecordings, getTopArtists } from "@/lib/listenbrainz";
-import { getCoverArt, getRecording } from "@/lib/musicbrainz";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,53 +21,36 @@ const Index = () => {
   
   const { data: recentRatings, isLoading: recentLoading } = useRecentRatings(8);
 
-  // Fetch trending music from ListenBrainz with high community ratings
+  // Fetch recently rated music with high ratings (8+)
   const { data: discoverMusic, isLoading: discoverLoading } = useQuery({
-    queryKey: ["discover-music-trending"],
+    queryKey: ["discover-music-highly-rated"],
     queryFn: async () => {
-      // Get trending songs from ListenBrainz
-      const trending = await getTopRecordings("week", 12);
+      const { data: highlyRated } = await supabase
+        .from("ratings")
+        .select("item_id, item_type, item_name, item_image, item_subtitle, rating, created_at")
+        .gte("rating", 8)
+        .order("created_at", { ascending: false })
+        .limit(20);
       
-      // Filter to items that exist and get cover art
-      const musicWithCovers = await Promise.all(
-        trending.slice(0, 8).map(async (rec) => {
-          if (!rec.recording_mbid) return null;
-          
-          try {
-            // Try to get recording details for cover art
-            const recording = await getRecording(rec.recording_mbid);
-            let coverUrl = null;
-            
-            if (recording?.releases?.[0]) {
-              const release = recording.releases[0];
-              const releaseGroupId = release["release-group"]?.id;
-              if (releaseGroupId) {
-                coverUrl = await getCoverArt(releaseGroupId, release.id);
-              }
-            }
-            
-            return {
-              id: rec.recording_mbid,
-              name: rec.recording_name || "Unknown",
-              type: "song" as const,
-              image: coverUrl,
-              subtitle: rec.artist_name,
-            };
-          } catch {
-            return {
-              id: rec.recording_mbid,
-              name: rec.recording_name || "Unknown",
-              type: "song" as const,
-              image: null,
-              subtitle: rec.artist_name,
-            };
-          }
-        })
-      );
+      if (!highlyRated || highlyRated.length === 0) return [];
       
-      return musicWithCovers.filter(Boolean).slice(0, 4);
+      // Deduplicate by item_id and take first 4
+      const seen = new Set<string>();
+      const unique = highlyRated.filter(item => {
+        if (seen.has(item.item_id)) return false;
+        seen.add(item.item_id);
+        return true;
+      }).slice(0, 4);
+      
+      return unique.map(item => ({
+        id: item.item_id,
+        name: item.item_name,
+        type: item.item_type as "song" | "album" | "artist",
+        image: item.item_image,
+        subtitle: item.item_subtitle,
+      }));
     },
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   return (

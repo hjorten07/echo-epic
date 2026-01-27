@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ListMusic, Plus, Edit2, Trash2, Gamepad2, Loader2, Lock, Globe } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ListMusic, Plus, Trash2, Gamepad2, Loader2, Lock, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePlaylists, usePlaylistSongs, useCreatePlaylist, useDeletePlaylist } from "@/hooks/usePlaylists";
@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { PlaylistThisOrThat } from "@/components/PlaylistThisOrThat";
 
 interface ProfilePlaylistsProps {
   userId: string;
@@ -24,11 +24,14 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
   const deletePlaylist = useDeletePlaylist();
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const navigate = useNavigate();
+  const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
 
   // For other users, we'd need to fetch their public playlists
   // For now, only show playlists on own profile
   const displayPlaylists = isOwnProfile ? playlists : [];
+
+  // Fetch songs for active playlist
+  const { data: playlistSongs } = usePlaylistSongs(activePlaylistId || "");
 
   const handleCreatePlaylist = () => {
     if (!newPlaylistName.trim()) return;
@@ -54,7 +57,7 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
   const handlePlayThisOrThat = (e: React.MouseEvent, playlistId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    navigate(`/games?mode=playlist&playlistId=${playlistId}`);
+    setActivePlaylistId(playlistId);
   };
 
   if (isLoading) {
@@ -67,6 +70,8 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
       </div>
     );
   }
+
+  const activePlaylist = displayPlaylists?.find(p => p.id === activePlaylistId);
 
   return (
     <div className="mb-8">
@@ -159,6 +164,15 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
             <p className="text-sm mt-1">Create a playlist to organize your favorite songs!</p>
           )}
         </div>
+      )}
+
+      {/* Playlist This or That Game Modal */}
+      {activePlaylistId && playlistSongs && activePlaylist && (
+        <PlaylistThisOrThat
+          songs={playlistSongs}
+          playlistName={activePlaylist.name}
+          onClose={() => setActivePlaylistId(null)}
+        />
       )}
     </div>
   );
