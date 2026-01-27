@@ -1,10 +1,7 @@
 import { useState, useCallback, memo, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { StarRating } from "@/components/StarRating";
 import { Music2, Shuffle, Loader2, X, ListMusic } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { useRateMutation } from "@/hooks/useRatings";
 import { toast } from "sonner";
 
 interface PlaylistSong {
@@ -25,12 +22,9 @@ export const PlaylistThisOrThat = memo(({ songs, playlistName, onClose }: Playli
   const [options, setOptions] = useState<PlaylistSong[]>([]);
   const [loading, setLoading] = useState(false);
   const [round, setRound] = useState(0);
-  const [chosenItem, setChosenItem] = useState<PlaylistSong | null>(null);
-  const [showRatingPrompt, setShowRatingPrompt] = useState(false);
   const [usedPairs, setUsedPairs] = useState<Set<string>>(new Set());
   
   const { user } = useAuth();
-  const rateMutation = useRateMutation();
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -77,43 +71,16 @@ export const PlaylistThisOrThat = memo(({ songs, playlistName, onClose }: Playli
     if (songs.length >= 2) {
       fetchOptions();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleChoice = useCallback((choice: PlaylistSong) => {
     if (!user) return;
-    setChosenItem(choice);
-    setShowRatingPrompt(true);
+    // For own playlist, skip rating prompt and go to next round immediately
     toast.success(`Great choice! You picked ${choice.song_name}`);
-  }, [user]);
-
-  const handleRateChoice = useCallback(async (rating: number) => {
-    if (!user || !chosenItem) return;
-
-    try {
-      await rateMutation.mutateAsync({
-        itemType: "song",
-        itemId: chosenItem.song_id,
-        itemName: chosenItem.song_name,
-        itemImage: chosenItem.song_image || undefined,
-        itemSubtitle: chosenItem.song_artist || undefined,
-        rating,
-      });
-      toast.success(`Rated ${chosenItem.song_name} ${rating}/10!`);
-    } catch (error) {
-      toast.error("Failed to save rating");
-    }
-    setShowRatingPrompt(false);
-    setChosenItem(null);
     setRound(r => r + 1);
     fetchOptions();
-  }, [user, chosenItem, rateMutation, fetchOptions]);
-
-  const handleSkipRating = useCallback(() => {
-    setShowRatingPrompt(false);
-    setChosenItem(null);
-    setRound(r => r + 1);
-    fetchOptions();
-  }, [fetchOptions]);
+  }, [user, fetchOptions]);
 
   const handleSkip = useCallback(() => {
     fetchOptions();
@@ -155,34 +122,7 @@ export const PlaylistThisOrThat = memo(({ songs, playlistName, onClose }: Playli
           </Button>
         </div>
 
-        {showRatingPrompt && chosenItem ? (
-          <div className="text-center py-8">
-            <div className="w-24 h-24 rounded-xl bg-secondary overflow-hidden mx-auto mb-4">
-              {chosenItem.song_image ? (
-                <img
-                  src={chosenItem.song_image}
-                  alt={chosenItem.song_name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Music2 className="w-8 h-8 text-muted-foreground" />
-                </div>
-              )}
-            </div>
-            <h3 className="font-display text-xl font-semibold mb-1">{chosenItem.song_name}</h3>
-            {chosenItem.song_artist && (
-              <p className="text-sm text-muted-foreground mb-4">{chosenItem.song_artist}</p>
-            )}
-            <p className="text-sm text-muted-foreground mb-4">Would you like to rate it?</p>
-            <div className="flex justify-center mb-4">
-              <StarRating onRate={handleRateChoice} size="lg" />
-            </div>
-            <Button variant="ghost" onClick={handleSkipRating} className="text-muted-foreground">
-              Skip rating
-            </Button>
-          </div>
-        ) : loading ? (
+        {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
@@ -255,7 +195,7 @@ export const PlaylistThisOrThat = memo(({ songs, playlistName, onClose }: Playli
         )}
 
         {/* Skip Button */}
-        {!loading && !showRatingPrompt && options.length >= 2 && (
+        {!loading && options.length >= 2 && (
           <div className="flex justify-center mt-4">
             <Button variant="ghost" onClick={handleSkip} className="text-muted-foreground">
               Skip this one

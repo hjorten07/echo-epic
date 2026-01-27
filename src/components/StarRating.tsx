@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef, memo } from "react";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +12,7 @@ interface StarRatingProps {
   className?: string;
 }
 
-export const StarRating = ({
+export const StarRating = memo(forwardRef<HTMLDivElement, StarRatingProps>(({
   rating = 0,
   onRate,
   readonly = false,
@@ -20,7 +20,7 @@ export const StarRating = ({
   showValue = false,
   totalRatings,
   className,
-}: StarRatingProps) => {
+}, ref) => {
   const [hoverRating, setHoverRating] = useState(0);
 
   const sizeClasses = {
@@ -32,7 +32,7 @@ export const StarRating = ({
   const displayRating = hoverRating || rating;
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div ref={ref} className={cn("flex items-center gap-2", className)}>
       <div className="flex gap-0.5">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
           <button
@@ -76,4 +76,6 @@ export const StarRating = ({
       )}
     </div>
   );
-};
+}));
+
+StarRating.displayName = "StarRating";

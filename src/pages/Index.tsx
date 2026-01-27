@@ -46,8 +46,8 @@ const Index = () => {
         id: item.item_id,
         name: item.item_name,
         type: item.item_type as "song" | "album" | "artist",
-        image: item.item_image,
-        subtitle: item.item_subtitle,
+        imageUrl: item.item_image || undefined,
+        subtitle: item.item_subtitle || undefined,
       }));
     },
     staleTime: 1000 * 60 * 5, // 5 minutes

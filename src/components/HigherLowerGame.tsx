@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, forwardRef, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowUp, ArrowDown, Loader2, Trophy, Music2, Disc3, Mic2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,7 @@ interface RatedItem {
   total_ratings: number;
 }
 
-export const HigherLowerGame = () => {
+export const HigherLowerGame = memo(forwardRef<HTMLElement, object>((_, ref) => {
   const [selectedType, setSelectedType] = useState<"song" | "album" | "artist">("song");
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -162,7 +162,7 @@ export const HigherLowerGame = () => {
 
   if (!isPlaying) {
     return (
-      <section className="glass-card rounded-2xl overflow-hidden p-6 md:p-8">
+      <section ref={ref} className="glass-card rounded-2xl overflow-hidden p-6 md:p-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -216,7 +216,7 @@ export const HigherLowerGame = () => {
 
   if (loading || !currentItem || !nextItem) {
     return (
-      <section className="glass-card rounded-2xl overflow-hidden p-8">
+      <section ref={ref} className="glass-card rounded-2xl overflow-hidden p-8">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
@@ -226,7 +226,7 @@ export const HigherLowerGame = () => {
 
   if (gameOver) {
     return (
-      <section className="glass-card rounded-2xl overflow-hidden p-8 text-center">
+      <section ref={ref} className="glass-card rounded-2xl overflow-hidden p-8 text-center">
         <Trophy className="w-16 h-16 mx-auto mb-4 text-primary" />
         <h2 className="font-display text-2xl font-bold mb-2">Game Over!</h2>
         <p className="text-muted-foreground mb-4">
@@ -244,7 +244,7 @@ export const HigherLowerGame = () => {
   }
 
   return (
-    <section className="glass-card rounded-2xl overflow-hidden p-6">
+    <section ref={ref} className="glass-card rounded-2xl overflow-hidden p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
@@ -344,4 +344,6 @@ export const HigherLowerGame = () => {
       </div>
     </section>
   );
-};
+}));
+
+HigherLowerGame.displayName = "HigherLowerGame";
