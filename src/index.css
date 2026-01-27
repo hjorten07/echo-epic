@@ -421,6 +421,45 @@
     --shadow-glow: 0 0 40px hsl(217 91% 60% / 0.15);
     --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.08);
   }
+
+  /* Slate Blue Theme - Clean, professional blue-gray palette */
+  .theme-slate-blue {
+    --background: 215 28% 17%;
+    --foreground: 60 9% 88%;
+
+    --card: 213 25% 21%;
+    --card-foreground: 60 9% 88%;
+
+    --popover: 214 26% 19%;
+    --popover-foreground: 60 9% 88%;
+
+    --primary: 210 40% 60%;
+    --primary-foreground: 215 28% 12%;
+
+    --secondary: 213 22% 26%;
+    --secondary-foreground: 60 9% 88%;
+
+    --muted: 214 20% 24%;
+    --muted-foreground: 210 15% 60%;
+
+    --accent: 210 40% 60%;
+    --accent-foreground: 215 28% 12%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 213 18% 30%;
+    --input: 213 18% 30%;
+    --ring: 210 40% 60%;
+
+    --star-empty: 213 15% 35%;
+    --star-filled: 210 40% 60%;
+    --star-hover: 210 45% 70%;
+
+    --gradient-gold: linear-gradient(135deg, hsl(210 40% 60%), hsl(200 35% 55%));
+    --shadow-glow: 0 0 40px hsl(210 40% 60% / 0.2);
+    --shadow-card: 0 8px 32px hsl(0 0% 0% / 0.3);
+  }
 }
 
 @layer base {

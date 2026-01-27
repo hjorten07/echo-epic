@@ -9,10 +9,12 @@ import { StarRating } from "@/components/StarRating";
 import { SoundWaveAnimation } from "@/components/SoundWaveAnimation";
 import { LazyImage } from "@/components/LazyImage";
 import { Loader2 } from "lucide-react";
-import { useRecentRatings, useTopRatings } from "@/hooks/useRatings";
+import { useRecentRatings } from "@/hooks/useRatings";
 import { useQuery } from "@tanstack/react-query";
-import { searchAll } from "@/lib/musicbrainz";
+import { getTopRecordings, getTopArtists } from "@/lib/listenbrainz";
+import { getCoverArt, getRecording } from "@/lib/musicbrainz";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 
 const games = ["thisOrThat", "higherLower"] as const;
 
@@ -20,13 +22,54 @@ const Index = () => {
   const [randomGame] = useState(() => games[Math.floor(Math.random() * games.length)]);
   
   const { data: recentRatings, isLoading: recentLoading } = useRecentRatings(8);
-  const { data: topAlbums, isLoading: topLoading } = useTopRatings("album", 5);
 
-  // Fetch some music to discover
+  // Fetch trending music from ListenBrainz with high community ratings
   const { data: discoverMusic, isLoading: discoverLoading } = useQuery({
-    queryKey: ["discover-music"],
-    queryFn: () => searchAll("popular", 4),
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    queryKey: ["discover-music-trending"],
+    queryFn: async () => {
+      // Get trending songs from ListenBrainz
+      const trending = await getTopRecordings("week", 12);
+      
+      // Filter to items that exist and get cover art
+      const musicWithCovers = await Promise.all(
+        trending.slice(0, 8).map(async (rec) => {
+          if (!rec.recording_mbid) return null;
+          
+          try {
+            // Try to get recording details for cover art
+            const recording = await getRecording(rec.recording_mbid);
+            let coverUrl = null;
+            
+            if (recording?.releases?.[0]) {
+              const release = recording.releases[0];
+              const releaseGroupId = release["release-group"]?.id;
+              if (releaseGroupId) {
+                coverUrl = await getCoverArt(releaseGroupId, release.id);
+              }
+            }
+            
+            return {
+              id: rec.recording_mbid,
+              name: rec.recording_name || "Unknown",
+              type: "song" as const,
+              image: coverUrl,
+              subtitle: rec.artist_name,
+            };
+          } catch {
+            return {
+              id: rec.recording_mbid,
+              name: rec.recording_name || "Unknown",
+              type: "song" as const,
+              image: null,
+              subtitle: rec.artist_name,
+            };
+          }
+        })
+      );
+      
+      return musicWithCovers.filter(Boolean).slice(0, 4);
+    },
+    staleTime: 1000 * 60 * 10, // 10 minutes
   });
 
   return (
@@ -137,64 +180,61 @@ const Index = () => {
 
             {/* Sidebar */}
             <div className="space-y-8">
-              {/* Top Albums Preview */}
+              {/* Quick Links */}
               <section className="py-8">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="font-display text-2xl font-bold">Top Albums</h2>
+                  <h2 className="font-display text-2xl font-bold">Explore</h2>
+                </div>
+                <div className="space-y-3">
                   <Link
                     to="/top100"
-                    className="text-sm text-primary hover:underline"
+                    className="flex items-center gap-3 p-4 rounded-lg glass-card hover:border-primary/30 transition-all"
                   >
-                    View Top 100
+                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                      <span className="text-xl">🏆</span>
+                    </div>
+                    <div>
+                      <p className="font-medium">Top 100</p>
+                      <p className="text-xs text-muted-foreground">Best rated music</p>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/recommendations"
+                    className="flex items-center gap-3 p-4 rounded-lg glass-card hover:border-primary/30 transition-all"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                      <span className="text-xl">✨</span>
+                    </div>
+                    <div>
+                      <p className="font-medium">For You</p>
+                      <p className="text-xs text-muted-foreground">Personalized picks</p>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/games"
+                    className="flex items-center gap-3 p-4 rounded-lg glass-card hover:border-primary/30 transition-all"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                      <span className="text-xl">🎮</span>
+                    </div>
+                    <div>
+                      <p className="font-medium">Games</p>
+                      <p className="text-xs text-muted-foreground">Fun music challenges</p>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/social"
+                    className="flex items-center gap-3 p-4 rounded-lg glass-card hover:border-primary/30 transition-all"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                      <span className="text-xl">👥</span>
+                    </div>
+                    <div>
+                      <p className="font-medium">Social</p>
+                      <p className="text-xs text-muted-foreground">Connect with others</p>
+                    </div>
                   </Link>
                 </div>
-                {topLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                ) : topAlbums && topAlbums.length > 0 ? (
-                  <div className="space-y-2">
-                    {topAlbums.map((item, index) => (
-                      <Link
-                        key={`${item.item_type}-${item.item_id}`}
-                        to={`/${item.item_type}/${item.item_id}`}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-                      >
-                        <span className="w-6 text-center font-bold text-muted-foreground">
-                          {index + 1}
-                        </span>
-                        <div className="w-10 h-10 rounded bg-muted overflow-hidden flex-shrink-0">
-                          {item.item_image ? (
-                            <LazyImage
-                              src={item.item_image}
-                              alt={item.item_name}
-                              className="w-full h-full"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <span className="text-xs font-bold">{item.item_name[0]}</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{item.item_name}</p>
-                          {item.item_subtitle && (
-                            <p className="text-xs text-muted-foreground truncate">{item.item_subtitle}</p>
-                          )}
-                        </div>
-                        <span className="text-sm font-semibold text-primary">
-                          {Number(item.avg_rating).toFixed(1)}
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="glass-card rounded-xl p-6 text-center">
-                    <p className="text-muted-foreground text-sm">
-                      Top 100 will populate as users rate music.
-                    </p>
-                  </div>
-                )}
               </section>
             </div>
           </div>
