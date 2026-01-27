@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,7 +24,15 @@ import Playlists from "./pages/Playlists";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Create QueryClient inside component to avoid HMR issues
+const createQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      retry: 1,
+    },
+  },
+});
 
 // Apply saved theme on load
 const ThemeInitializer = ({ children }: { children: React.ReactNode }) => {
@@ -37,41 +45,45 @@ const ThemeInitializer = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <ThemeInitializer>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/user/:userId" element={<Profile />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/social" element={<Social />} />
-              <Route path="/games" element={<Games />} />
-              <Route path="/top100" element={<Top100 />} />
-              <Route path="/recommendations" element={<Recommendations />} />
-              <Route path="/playlists" element={<Playlists />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/artist/:id" element={<Artist />} />
-              <Route path="/album/:id" element={<Album />} />
-              <Route path="/song/:id" element={<Song />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/messages" element={<Conversations />} />
-              <Route path="/messages/:partnerId" element={<Messages />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AuthProvider>
-        </BrowserRouter>
-      </ThemeInitializer>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [queryClient] = useState(() => createQueryClient());
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <ThemeInitializer>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/user/:userId" element={<Profile />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/social" element={<Social />} />
+                <Route path="/games" element={<Games />} />
+                <Route path="/top100" element={<Top100 />} />
+                <Route path="/recommendations" element={<Recommendations />} />
+                <Route path="/playlists" element={<Playlists />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/artist/:id" element={<Artist />} />
+                <Route path="/album/:id" element={<Album />} />
+                <Route path="/song/:id" element={<Song />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/messages" element={<Conversations />} />
+                <Route path="/messages/:partnerId" element={<Messages />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AuthProvider>
+          </BrowserRouter>
+        </ThemeInitializer>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
