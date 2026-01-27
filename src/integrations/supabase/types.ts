@@ -235,6 +235,218 @@ export type Database = {
           },
         ]
       }
+      game_chat: {
+        Row: {
+          created_at: string
+          id: string
+          lobby_id: string
+          message: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lobby_id: string
+          message: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lobby_id?: string
+          message?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_chat_lobby_id_fkey"
+            columns: ["lobby_id"]
+            isOneToOne: false
+            referencedRelation: "game_lobbies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_lobbies: {
+        Row: {
+          code: string
+          created_at: string
+          current_round: number
+          host_id: string
+          id: string
+          is_private: boolean
+          max_rounds: number
+          round_end_at: string | null
+          status: string
+          theme: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          current_round?: number
+          host_id: string
+          id?: string
+          is_private?: boolean
+          max_rounds?: number
+          round_end_at?: string | null
+          status?: string
+          theme?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          current_round?: number
+          host_id?: string
+          id?: string
+          is_private?: boolean
+          max_rounds?: number
+          round_end_at?: string | null
+          status?: string
+          theme?: string | null
+        }
+        Relationships: []
+      }
+      game_players: {
+        Row: {
+          id: string
+          is_ready: boolean
+          joined_at: string
+          lobby_id: string
+          score: number
+          user_id: string
+          wins: number
+        }
+        Insert: {
+          id?: string
+          is_ready?: boolean
+          joined_at?: string
+          lobby_id: string
+          score?: number
+          user_id: string
+          wins?: number
+        }
+        Update: {
+          id?: string
+          is_ready?: boolean
+          joined_at?: string
+          lobby_id?: string
+          score?: number
+          user_id?: string
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_players_lobby_id_fkey"
+            columns: ["lobby_id"]
+            isOneToOne: false
+            referencedRelation: "game_lobbies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_submissions: {
+        Row: {
+          id: string
+          lobby_id: string
+          player_id: string
+          round: number
+          song_artist: string | null
+          song_id: string
+          song_image: string | null
+          song_name: string
+          submitted_at: string
+        }
+        Insert: {
+          id?: string
+          lobby_id: string
+          player_id: string
+          round: number
+          song_artist?: string | null
+          song_id: string
+          song_image?: string | null
+          song_name: string
+          submitted_at?: string
+        }
+        Update: {
+          id?: string
+          lobby_id?: string
+          player_id?: string
+          round?: number
+          song_artist?: string | null
+          song_id?: string
+          song_image?: string | null
+          song_name?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_submissions_lobby_id_fkey"
+            columns: ["lobby_id"]
+            isOneToOne: false
+            referencedRelation: "game_lobbies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_submissions_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "game_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_votes: {
+        Row: {
+          created_at: string
+          id: string
+          lobby_id: string
+          points: number
+          round: number
+          submission_id: string
+          voter_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lobby_id: string
+          points: number
+          round: number
+          submission_id: string
+          voter_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lobby_id?: string
+          points?: number
+          round?: number
+          submission_id?: string
+          voter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_votes_lobby_id_fkey"
+            columns: ["lobby_id"]
+            isOneToOne: false
+            referencedRelation: "game_lobbies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_votes_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "game_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_votes_voter_id_fkey"
+            columns: ["voter_id"]
+            isOneToOne: false
+            referencedRelation: "game_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hot_take_replies: {
         Row: {
           content: string
