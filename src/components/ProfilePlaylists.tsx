@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ListMusic, Plus, Trash2, Gamepad2, Loader2, Lock, Globe } from "lucide-react";
+import { ListMusic, Plus, Trash2, Gamepad2, Loader2, Lock, Globe, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { usePlaylists, usePlaylistSongs, useCreatePlaylist, useDeletePlaylist } from "@/hooks/usePlaylists";
 import {
   Dialog,
@@ -23,6 +25,7 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
   const createPlaylist = useCreatePlaylist();
   const deletePlaylist = useDeletePlaylist();
   const [newPlaylistName, setNewPlaylistName] = useState("");
+  const [newIsPublic, setNewIsPublic] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
 
@@ -36,10 +39,11 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
   const handleCreatePlaylist = () => {
     if (!newPlaylistName.trim()) return;
     createPlaylist.mutate(
-      { name: newPlaylistName },
+      { name: newPlaylistName, isPublic: newIsPublic },
       {
         onSuccess: () => {
           setNewPlaylistName("");
+          setNewIsPublic(false);
           setCreateDialogOpen(false);
         },
       }
@@ -93,13 +97,33 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
                 <DialogTitle>Create New Playlist</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-4">
-                <Input
-                  placeholder="Playlist name"
-                  value={newPlaylistName}
-                  onChange={(e) => setNewPlaylistName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCreatePlaylist()}
-                />
-                <Button onClick={handleCreatePlaylist} disabled={!newPlaylistName.trim()}>
+                <div className="space-y-2">
+                  <Label htmlFor="new-playlist-name">Playlist Name</Label>
+                  <Input
+                    id="new-playlist-name"
+                    placeholder="My awesome playlist..."
+                    value={newPlaylistName}
+                    onChange={(e) => setNewPlaylistName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleCreatePlaylist()}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50">
+                  <div className="flex items-center gap-3">
+                    {newIsPublic ? (
+                      <Globe className="w-5 h-5 text-primary" />
+                    ) : (
+                      <Lock className="w-5 h-5 text-muted-foreground" />
+                    )}
+                    <div>
+                      <p className="font-medium">{newIsPublic ? "Public" : "Private"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {newIsPublic ? "Anyone can see this playlist" : "Only you can see this playlist"}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch checked={newIsPublic} onCheckedChange={setNewIsPublic} />
+                </div>
+                <Button onClick={handleCreatePlaylist} disabled={!newPlaylistName.trim()} className="w-full">
                   Create Playlist
                 </Button>
               </div>
@@ -116,16 +140,24 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
               to={`/playlists?id=${playlist.id}`}
               className="flex items-center gap-4 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors group"
             >
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
-                <ListMusic className="w-6 h-6 text-primary" />
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center overflow-hidden">
+                {(playlist as any).cover_image ? (
+                  <img 
+                    src={(playlist as any).cover_image} 
+                    alt={playlist.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <ListMusic className="w-6 h-6 text-primary" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-medium truncate">{playlist.name}</p>
                   {playlist.is_public ? (
-                    <Globe className="w-3 h-3 text-muted-foreground" />
+                    <Globe className="w-3 h-3 text-muted-foreground shrink-0" />
                   ) : (
-                    <Lock className="w-3 h-3 text-muted-foreground" />
+                    <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
                   )}
                 </div>
                 {playlist.description && (

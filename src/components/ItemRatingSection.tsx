@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { StarRating } from "@/components/StarRating";
+import { CommunityRatingBreakdown } from "@/components/CommunityRatingBreakdown";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRating, useItemRating, useRateMutation, useDeleteRatingMutation } from "@/hooks/useRatings";
 import { useCheckAndAwardBadges, useUpdateStreak } from "@/hooks/useBadges";
-import { Trash2, Users, Plus, Share2 } from "lucide-react";
+import { Trash2, Plus, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
@@ -125,24 +126,13 @@ export const ItemRatingSection = ({
           )}
         </div>
 
-        {/* Community Rating - Display Only */}
-        <div className="flex items-center gap-4 p-4 rounded-xl bg-secondary/50">
-          <Users className="w-5 h-5 text-muted-foreground" />
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Community</p>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-display font-bold text-primary">
-                {avgRating > 0 ? avgRating.toFixed(1) : "—"}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                / 10
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {totalRatings} {totalRatings === 1 ? "rating" : "ratings"}
-            </p>
-          </div>
-        </div>
+        {/* Community Rating - with dropdown breakdown */}
+        <CommunityRatingBreakdown
+          itemType={itemType}
+          itemId={itemId}
+          avgRating={avgRating}
+          totalRatings={totalRatings}
+        />
       </div>
 
       {/* Action Buttons */}

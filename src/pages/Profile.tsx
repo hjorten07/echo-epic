@@ -10,6 +10,7 @@ import { AllRatingsModal } from "@/components/AllRatingsModal";
 import { FollowRequestsSection } from "@/components/FollowRequestsSection";
 import { RatingItemImage } from "@/components/RatingItemImage";
 import { ProfilePlaylists } from "@/components/ProfilePlaylists";
+import { ProfileActivity } from "@/components/ProfileActivity";
 import { Loader2, Calendar, Edit2, Check, X, Users, Plus, Lock, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -484,6 +485,9 @@ const Profile = () => {
                     <p className="text-sm text-muted-foreground">High Ratings (8+)</p>
                   </div>
                 </div>
+
+                {/* Activity Section */}
+                <ProfileActivity userId={displayUserId} />
 
                 {/* Playlists */}
                 <ProfilePlaylists userId={displayUserId} isOwnProfile={isOwnProfile} />
