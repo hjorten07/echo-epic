@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Copy, Crown, LogOut, Play, Send, Users } from "lucide-react";
+import { Copy, Crown, LogOut, Play, Send, Users, Clock, Globe, Lock } from "lucide-react";
 import { useSongRush } from "@/hooks/useSongRush";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 
 interface Props {
   game: ReturnType<typeof useSongRush>;
@@ -28,20 +29,74 @@ export const SongRushLobby = ({ game }: Props) => {
     }
   };
 
+  const isPublicLobby = !game.lobby?.is_private;
+  const hasEnoughPlayers = game.players.length >= 2;
+
+  // Calculate countdown progress for public lobbies
+  const countdownProgress = game.publicCountdown > 0 
+    ? (game.publicCountdown / 120) * 100 
+    : 0;
+
+  const formatCountdown = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
   return (
     <div className="grid md:grid-cols-2 gap-6">
       {/* Left: Players */}
       <div className="glass-card p-6 rounded-2xl">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <h3 className="font-display text-xl font-bold flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
             Players ({game.players.length}/6)
           </h3>
-          <Button variant="outline" size="sm" onClick={copyCode} className="gap-2">
-            <Copy className="w-4 h-4" />
-            {game.lobby?.code}
-          </Button>
+          <div className="flex items-center gap-2">
+            {isPublicLobby ? (
+              <span className="text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-500 flex items-center gap-1">
+                <Globe className="w-3 h-3" />
+                Public
+              </span>
+            ) : (
+              <span className="text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center gap-1">
+                <Lock className="w-3 h-3" />
+                Private
+              </span>
+            )}
+            <Button variant="outline" size="sm" onClick={copyCode} className="gap-2">
+              <Copy className="w-4 h-4" />
+              {game.lobby?.code}
+            </Button>
+          </div>
         </div>
+
+        {/* Public lobby waiting/countdown message */}
+        {isPublicLobby && (
+          <div className="mb-4 p-3 rounded-xl bg-muted/50">
+            {!hasEnoughPlayers ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="w-4 h-4 animate-pulse" />
+                <span>Waiting for more players...</span>
+              </div>
+            ) : game.publicCountdown > 0 ? (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm">Game starting in...</span>
+                  <span className="font-mono font-bold text-primary">
+                    {formatCountdown(game.publicCountdown)}
+                  </span>
+                </div>
+                <Progress value={countdownProgress} className="h-2" />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-green-500">
+                <Play className="w-4 h-4" />
+                <span>Starting game...</span>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="space-y-3 mb-6">
           {game.players.map((player) => (
@@ -80,7 +135,7 @@ export const SongRushLobby = ({ game }: Props) => {
             <LogOut className="w-4 h-4 mr-2" />
             Leave
           </Button>
-          {game.isHost && (
+          {game.isHost && !isPublicLobby && (
             <Button
               onClick={game.startGame}
               disabled={game.players.length < 2}
