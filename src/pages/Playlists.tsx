@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Plus, ListMusic, Trash2, Play, Loader2, Music, Settings2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Plus, ListMusic, Trash2, Play, Loader2, Music, Settings2, Globe, Lock } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -19,15 +21,21 @@ import {
   useDeletePlaylist,
   useRemoveSongFromPlaylist,
 } from "@/hooks/usePlaylists";
+import { PlaylistSettingsDialog } from "@/components/PlaylistSettingsDialog";
+import { PlaylistThisOrThat } from "@/components/PlaylistThisOrThat";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 const Playlists = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newIsPublic, setNewIsPublic] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [playingThisOrThat, setPlayingThisOrThat] = useState(false);
   
   const { data: playlists, isLoading } = usePlaylists();
   const { data: playlistDetails } = usePlaylist(selectedPlaylist || undefined);
@@ -36,15 +44,29 @@ const Playlists = () => {
   const deletePlaylist = useDeletePlaylist();
   const removeSong = useRemoveSongFromPlaylist();
 
+  // Check URL for playlist ID and game mode
+  useEffect(() => {
+    const playlistId = searchParams.get("id");
+    const playGame = searchParams.get("play") === "true";
+    if (playlistId) {
+      setSelectedPlaylist(playlistId);
+      if (playGame) {
+        setPlayingThisOrThat(true);
+      }
+    }
+  }, [searchParams]);
+
   const handleCreate = async () => {
     if (!newName.trim()) return;
-    await createPlaylist.mutateAsync({ name: newName });
+    await createPlaylist.mutateAsync({ name: newName, isPublic: newIsPublic });
     setNewName("");
+    setNewIsPublic(false);
     setShowCreate(false);
   };
 
   const handlePlayThisOrThat = (playlistId: string) => {
-    navigate(`/games?playlist=${playlistId}`);
+    setSelectedPlaylist(playlistId);
+    setPlayingThisOrThat(true);
   };
 
   if (!user) {
@@ -124,11 +146,26 @@ const Playlists = () => {
                     )}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center">
-                        <ListMusic className="w-6 h-6 text-primary" />
+                      <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center overflow-hidden">
+                        {(playlist as any).cover_image ? (
+                          <img 
+                            src={(playlist as any).cover_image} 
+                            alt={playlist.name} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <ListMusic className="w-6 h-6 text-primary" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">{playlist.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold truncate">{playlist.name}</p>
+                          {playlist.is_public ? (
+                            <Globe className="w-3 h-3 text-muted-foreground shrink-0" />
+                          ) : (
+                            <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {format(new Date(playlist.created_at), "MMM d, yyyy")}
                         </p>
@@ -145,11 +182,31 @@ const Playlists = () => {
                 <div className="glass-card rounded-xl p-6">
                   {/* Playlist Header */}
                   <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="font-display text-2xl font-bold">{playlistDetails.name}</h2>
-                      <p className="text-muted-foreground">
-                        {playlistSongs?.length || 0} songs
-                      </p>
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-lg bg-secondary overflow-hidden flex items-center justify-center">
+                        {(playlistDetails as any).cover_image ? (
+                          <img 
+                            src={(playlistDetails as any).cover_image} 
+                            alt={playlistDetails.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <ListMusic className="w-8 h-8 text-primary" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="font-display text-2xl font-bold">{playlistDetails.name}</h2>
+                          {playlistDetails.is_public ? (
+                            <Globe className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <Lock className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <p className="text-muted-foreground">
+                          {playlistSongs?.length || 0} songs
+                        </p>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       {playlistSongs && playlistSongs.length >= 2 && (
@@ -161,6 +218,14 @@ const Playlists = () => {
                           Play This or That
                         </Button>
                       )}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowSettings(true)}
+                        title="Playlist settings"
+                      >
+                        <Settings2 className="w-4 h-4" />
+                      </Button>
                       <Button
                         variant="outline"
                         size="icon"
@@ -265,13 +330,33 @@ const Playlists = () => {
             <DialogTitle className="font-display">Create Playlist</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <Input
-              placeholder="Playlist name..."
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              autoFocus
-              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="playlist-name">Playlist Name</Label>
+              <Input
+                id="playlist-name"
+                placeholder="My awesome playlist..."
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+              />
+            </div>
+            <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50">
+              <div className="flex items-center gap-3">
+                {newIsPublic ? (
+                  <Globe className="w-5 h-5 text-primary" />
+                ) : (
+                  <Lock className="w-5 h-5 text-muted-foreground" />
+                )}
+                <div>
+                  <p className="font-medium">{newIsPublic ? "Public" : "Private"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {newIsPublic ? "Anyone can see" : "Only you can see"}
+                  </p>
+                </div>
+              </div>
+              <Switch checked={newIsPublic} onCheckedChange={setNewIsPublic} />
+            </div>
             <Button 
               onClick={handleCreate} 
               disabled={!newName.trim() || createPlaylist.isPending}
@@ -287,6 +372,24 @@ const Playlists = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Playlist Settings Dialog */}
+      {selectedPlaylist && playlistDetails && (
+        <PlaylistSettingsDialog
+          playlist={playlistDetails as any}
+          open={showSettings}
+          onOpenChange={setShowSettings}
+        />
+      )}
+
+      {/* This or That Game Modal */}
+      {playingThisOrThat && playlistSongs && playlistDetails && (
+        <PlaylistThisOrThat
+          songs={playlistSongs}
+          playlistName={playlistDetails.name}
+          onClose={() => setPlayingThisOrThat(false)}
+        />
+      )}
     </div>
   );
 };

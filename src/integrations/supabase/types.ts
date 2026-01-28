@@ -395,6 +395,33 @@ export type Database = {
           },
         ]
       }
+      game_themes: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       game_votes: {
         Row: {
           created_at: string
@@ -687,6 +714,7 @@ export type Database = {
       }
       playlists: {
         Row: {
+          cover_image: string | null
           created_at: string
           description: string | null
           id: string
@@ -696,6 +724,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cover_image?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -705,6 +734,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cover_image?: string | null
           created_at?: string
           description?: string | null
           id?: string

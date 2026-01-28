@@ -17,6 +17,8 @@ import {
   MessageSquare,
   Filter,
   Settings,
+  Award,
+  Zap,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -48,6 +50,8 @@ import { useSuggestions, useUpdateSuggestionStatus } from "@/hooks/useSuggestion
 import { useBannedWords, useAddBannedWord, useDeleteBannedWord } from "@/hooks/useBannedWords";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AdminBadgesTab } from "@/components/admin/AdminBadgesTab";
+import { AdminThemesTab } from "@/components/admin/AdminThemesTab";
 
 const Admin = () => {
   const queryClient = useQueryClient();
@@ -258,7 +262,7 @@ const Admin = () => {
           </div>
 
           <Tabs defaultValue="analytics" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7 max-w-3xl">
+            <TabsList className="grid w-full grid-cols-9 max-w-4xl">
               <TabsTrigger value="analytics" className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
                 <span className="hidden sm:inline">Analytics</span>
@@ -281,7 +285,15 @@ const Admin = () => {
               </TabsTrigger>
               <TabsTrigger value="filter" className="flex items-center gap-2">
                 <Filter className="w-4 h-4" />
-                <span className="hidden sm:inline">Chat Filter</span>
+                <span className="hidden sm:inline">Filter</span>
+              </TabsTrigger>
+              <TabsTrigger value="badges" className="flex items-center gap-2">
+                <Award className="w-4 h-4" />
+                <span className="hidden sm:inline">Badges</span>
+              </TabsTrigger>
+              <TabsTrigger value="themes" className="flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                <span className="hidden sm:inline">Themes</span>
               </TabsTrigger>
               <TabsTrigger value="dynamics" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
@@ -879,6 +891,16 @@ const Admin = () => {
                   <p className="text-muted-foreground">No banned words configured</p>
                 </div>
               )}
+            </TabsContent>
+
+            {/* Badges Tab */}
+            <TabsContent value="badges" className="space-y-6">
+              <AdminBadgesTab />
+            </TabsContent>
+
+            {/* Themes Tab */}
+            <TabsContent value="themes" className="space-y-6">
+              <AdminThemesTab />
             </TabsContent>
 
             {/* Dynamics Tab */}
