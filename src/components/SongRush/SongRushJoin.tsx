@@ -1,17 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Users, Lock, Globe, Zap } from "lucide-react";
+import { Users, Lock, Globe, Zap, Trophy, HelpCircle } from "lucide-react";
 import { useSongRush } from "@/hooks/useSongRush";
 import { VinylLoader } from "@/components/VinylLoader";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface Props {
   game: ReturnType<typeof useSongRush>;
 }
 
 export const SongRushJoin = ({ game }: Props) => {
+  const { user } = useAuth();
   const [joinCode, setJoinCode] = useState("");
   const [mode, setMode] = useState<"menu" | "join">("menu");
+  const [totalWins, setTotalWins] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchWins = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("game_wins")
+        .eq("id", user.id)
+        .single();
+      if (data) {
+        setTotalWins(data.game_wins || 0);
+      }
+    };
+    fetchWins();
+  }, [user]);
 
   const handleJoin = async () => {
     if (joinCode.length === 6) {
@@ -54,12 +80,19 @@ export const SongRushJoin = ({ game }: Props) => {
         <p className="text-muted-foreground max-w-md mx-auto">
           Race to find the perfect song for each theme. Submit your pick, vote on others, and compete to win!
         </p>
+
+        {/* Total Wins Display */}
+        <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/20 text-yellow-600">
+          <Trophy className="w-5 h-5" />
+          <span className="font-bold">{totalWins}</span>
+          <span className="text-sm">Total Wins</span>
+        </div>
       </div>
 
       <div className="grid gap-4 max-w-md mx-auto">
         <Button
           size="lg"
-          onClick={() => game.findPublicLobby()}
+          onClick={() => game.createPublicLobby()}
           disabled={game.isLoading}
           className="h-16 text-lg"
         >
@@ -97,7 +130,71 @@ export const SongRushJoin = ({ game }: Props) => {
         </div>
       </div>
 
-      <div className="mt-12 grid grid-cols-3 gap-6 max-w-lg mx-auto text-center">
+      {/* How to Play */}
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="ghost" className="mt-6 gap-2">
+            <HelpCircle className="w-4 h-4" />
+            How to Play
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-primary" />
+              How to Play Song Rush
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <span className="font-bold text-primary">1</span>
+              </div>
+              <div>
+                <p className="font-medium">Get a Theme</p>
+                <p className="text-muted-foreground">Each round has a theme like "Summer Vibes" or "Heartbreak"</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <span className="font-bold text-primary">2</span>
+              </div>
+              <div>
+                <p className="font-medium">Submit a Song (2 minutes)</p>
+                <p className="text-muted-foreground">Search and pick a song that best fits the theme</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <span className="font-bold text-primary">3</span>
+              </div>
+              <div>
+                <p className="font-medium">Vote on Songs (1 minute)</p>
+                <p className="text-muted-foreground">Give 1-3 points to each song (you can't vote for your own)</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <span className="font-bold text-primary">4</span>
+              </div>
+              <div>
+                <p className="font-medium">Win Rounds!</p>
+                <p className="text-muted-foreground">The song with the most points wins. First to 2 round wins takes the game!</p>
+              </div>
+            </div>
+            <div className="pt-2 border-t">
+              <p className="text-muted-foreground">
+                <strong>Quick Play:</strong> Joins a public game or creates one. Game auto-starts after 2 min countdown when 2+ players join.
+              </p>
+              <p className="text-muted-foreground mt-2">
+                <strong>Private Game:</strong> Create a lobby with a code to share with friends. Host controls when to start.
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <div className="mt-8 grid grid-cols-3 gap-6 max-w-lg mx-auto text-center">
         <div>
           <div className="text-3xl mb-2">🎵</div>
           <p className="text-sm text-muted-foreground">Pick a song that fits the theme</p>

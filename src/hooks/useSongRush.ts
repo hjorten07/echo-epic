@@ -63,7 +63,7 @@ export interface ChatMessage {
   };
 }
 
-const THEMES = [
+const FALLBACK_THEMES = [
   "Summer Vibes",
   "Heartbreak",
   "Party Anthems",
@@ -96,22 +96,40 @@ export const useSongRush = () => {
   const [votes, setVotes] = useState<GameVote[]>([]);
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [publicCountdown, setPublicCountdown] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [roundWinner, setRoundWinner] = useState<{ player: GamePlayer; submission: GameSubmission } | null>(null);
+  const [themes, setThemes] = useState<string[]>(FALLBACK_THEMES);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Fetch themes from database
+  useEffect(() => {
+    const fetchThemes = async () => {
+      const { data } = await supabase
+        .from("game_themes")
+        .select("name")
+        .eq("is_active", true);
+      if (data && data.length > 0) {
+        setThemes(data.map(t => t.name));
+      }
+    };
+    fetchThemes();
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
       }
     };
   }, []);
 
-  // Timer logic
+  // Timer logic for game phases
   useEffect(() => {
     if (lobby?.round_end_at) {
       const updateTimer = () => {
@@ -133,6 +151,92 @@ export const useSongRush = () => {
       };
     }
   }, [lobby?.round_end_at]);
+
+  // Public lobby countdown logic
+  useEffect(() => {
+    if (!lobby || lobby.is_private || lobby.status !== "waiting") {
+      setPublicCountdown(0);
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+      }
+      return;
+    }
+
+    // Start countdown when 2+ players join public lobby
+    if (players.length >= 2) {
+      // Calculate countdown from lobby creation (2 minutes = 120 seconds)
+      const lobbyCreatedAt = new Date(lobby.created_at).getTime();
+      const countdownEnd = lobbyCreatedAt + 120 * 1000;
+
+      const updateCountdown = () => {
+        const now = Date.now();
+        const remaining = Math.max(0, Math.floor((countdownEnd - now) / 1000));
+        setPublicCountdown(remaining);
+
+        // Auto-start when countdown reaches 0
+        if (remaining === 0 && lobby.status === "waiting") {
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          // Only host triggers start, but for public lobbies, check if we need to auto-start
+          autoStartPublicGame();
+        }
+      };
+
+      updateCountdown();
+      countdownRef.current = setInterval(updateCountdown, 1000);
+
+      return () => {
+        if (countdownRef.current) {
+          clearInterval(countdownRef.current);
+          countdownRef.current = null;
+        }
+      };
+    } else {
+      setPublicCountdown(0);
+    }
+  }, [lobby?.id, lobby?.is_private, lobby?.status, lobby?.created_at, players.length]);
+
+  const autoStartPublicGame = useCallback(async () => {
+    if (!lobby || lobby.is_private || lobby.status !== "waiting") return;
+    if (players.length < 2) return;
+
+    // Only the host should trigger the start
+    if (lobby.host_id !== user?.id) return;
+
+    const theme = themes[Math.floor(Math.random() * themes.length)];
+    const roundEnd = new Date(Date.now() + 120 * 1000).toISOString();
+
+    await supabase
+      .from("game_lobbies")
+      .update({
+        status: "submitting",
+        theme,
+        round_end_at: roundEnd,
+      })
+      .eq("id", lobby.id);
+  }, [lobby, players.length, themes, user?.id]);
+
+  const fetchPlayersWithProfiles = async (lobbyId: string) => {
+    const { data } = await supabase
+      .from("game_players")
+      .select("*")
+      .eq("lobby_id", lobbyId);
+    
+    if (data) {
+      const playerIds = data.map(p => p.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username, avatar_url")
+        .in("id", playerIds);
+      
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      return data.map(p => ({
+        ...p,
+        profile: profileMap.get(p.user_id) || undefined,
+      })) as GamePlayer[];
+    }
+    return [];
+  };
 
   const subscribeToLobby = useCallback((lobbyId: string) => {
     if (channelRef.current) {
@@ -157,29 +261,10 @@ export const useSongRush = () => {
         "postgres_changes",
         { event: "*", schema: "public", table: "game_players", filter: `lobby_id=eq.${lobbyId}` },
         async () => {
-          // Refetch players - use user_id to manually join profiles
-          const { data } = await supabase
-            .from("game_players")
-            .select("*")
-            .eq("lobby_id", lobbyId);
-          if (data) {
-            // Fetch profiles for each player
-            const playerIds = data.map(p => p.user_id);
-            const { data: profiles } = await supabase
-              .from("profiles")
-              .select("id, username, avatar_url")
-              .in("id", playerIds);
-            
-            const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
-            const typedData = data.map(p => ({
-              ...p,
-              profile: profileMap.get(p.user_id) || undefined,
-            })) as GamePlayer[];
-            
-            setPlayers(typedData);
-            const me = typedData.find(p => p.user_id === user?.id);
-            if (me) setMyPlayer(me);
-          }
+          const typedData = await fetchPlayersWithProfiles(lobbyId);
+          setPlayers(typedData);
+          const me = typedData.find(p => p.user_id === user?.id);
+          if (me) setMyPlayer(me);
         }
       )
       .on(
@@ -285,6 +370,11 @@ export const useSongRush = () => {
     return typedLobby;
   }, [user, subscribeToLobby]);
 
+  // Create a new public lobby (Quick Play always creates fresh public lobby)
+  const createPublicLobby = useCallback(async () => {
+    return createLobby(false);
+  }, [createLobby]);
+
   const joinLobby = useCallback(async (code: string) => {
     if (!user) {
       toast.error("You must be logged in to join a game");
@@ -339,29 +429,13 @@ export const useSongRush = () => {
       return false;
     }
 
-    // Fetch all players and their profiles
-    const { data: allPlayers } = await supabase
-      .from("game_players")
-      .select("*")
-      .eq("lobby_id", lobbyData.id);
-
-    const playerIds = allPlayers?.map(p => p.user_id) || [];
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, username, avatar_url")
-      .in("id", playerIds);
-    
-    const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+    const typedAllPlayers = await fetchPlayersWithProfiles(lobbyData.id);
 
     const typedLobby = lobbyData as unknown as GameLobby;
-    const typedPlayer: GamePlayer = {
+    const typedPlayer = typedAllPlayers.find(p => p.user_id === user.id) || {
       ...playerData,
-      profile: profileMap.get(user.id) || undefined,
-    };
-    const typedAllPlayers = (allPlayers || []).map(p => ({
-      ...p,
-      profile: profileMap.get(p.user_id) || undefined,
-    })) as GamePlayer[];
+      profile: undefined,
+    } as GamePlayer;
 
     setLobby(typedLobby);
     setMyPlayer(typedPlayer);
@@ -371,43 +445,6 @@ export const useSongRush = () => {
 
     return true;
   }, [user, subscribeToLobby]);
-
-  const findPublicLobby = useCallback(async () => {
-    if (!user) {
-      toast.error("You must be logged in");
-      return false;
-    }
-
-    setIsLoading(true);
-
-    // Find a public lobby with space
-    const { data: lobbies } = await supabase
-      .from("game_lobbies")
-      .select("*")
-      .eq("is_private", false)
-      .eq("status", "waiting")
-      .order("created_at", { ascending: false });
-
-    if (lobbies && lobbies.length > 0) {
-      // Check each lobby for space
-      for (const l of lobbies as GameLobby[]) {
-        const { count } = await supabase
-          .from("game_players")
-          .select("*", { count: "exact", head: true })
-          .eq("lobby_id", l.id);
-
-        if (!count || count < 6) {
-          setIsLoading(false);
-          return joinLobby(l.code);
-        }
-      }
-    }
-
-    // No lobby found, create one
-    const newLobby = await createLobby(false);
-    setIsLoading(false);
-    return !!newLobby;
-  }, [user, joinLobby, createLobby]);
 
   const leaveLobby = useCallback(async () => {
     if (!lobby || !myPlayer) return;
@@ -430,6 +467,7 @@ export const useSongRush = () => {
     setSubmissions([]);
     setVotes([]);
     setChat([]);
+    setPublicCountdown(0);
   }, [lobby, myPlayer, user?.id]);
 
   const startGame = useCallback(async () => {
@@ -440,8 +478,7 @@ export const useSongRush = () => {
       return;
     }
 
-    // Select random theme
-    const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
+    const theme = themes[Math.floor(Math.random() * themes.length)];
     const roundEnd = new Date(Date.now() + 120 * 1000).toISOString();
 
     await supabase
@@ -452,10 +489,19 @@ export const useSongRush = () => {
         round_end_at: roundEnd,
       })
       .eq("id", lobby.id);
-  }, [lobby, user?.id, players.length]);
+  }, [lobby, user?.id, players.length, themes]);
 
   const submitSong = useCallback(async (song: { id: string; name: string; artist?: string; image?: string }) => {
     if (!lobby || !myPlayer) return false;
+
+    // Check if submission window has closed
+    if (lobby.round_end_at) {
+      const endTime = new Date(lobby.round_end_at).getTime();
+      if (Date.now() > endTime) {
+        toast.error("Submission time has ended");
+        return false;
+      }
+    }
 
     const { error } = await supabase.from("game_submissions").insert({
       lobby_id: lobby.id,
@@ -557,19 +603,30 @@ export const useSongRush = () => {
       }
     }
 
-    // Update winner's score
-    if (winnerId) {
-      const winner = players.find(p => p.id === winnerId);
-      if (winner) {
+    // Update ALL players' scores based on their submissions
+    for (const sub of roundSubmissions) {
+      const playerPoints = roundVotes
+        .filter(v => v.submission_id === sub.id)
+        .reduce((sum, v) => sum + v.points, 0);
+      
+      const player = players.find(p => p.id === sub.player_id);
+      if (player) {
+        const isWinner = sub.player_id === winnerId;
         await supabase
           .from("game_players")
           .update({ 
-            score: winner.score + maxPoints,
-            wins: winner.wins + 1 
+            score: player.score + playerPoints,
+            wins: isWinner ? player.wins + 1 : player.wins
           })
-          .eq("id", winnerId);
+          .eq("id", sub.player_id);
+      }
+    }
 
-        setRoundWinner({ player: winner, submission: winningSubmission! });
+    // Find winner player
+    if (winnerId) {
+      const winner = players.find(p => p.id === winnerId);
+      if (winner && winningSubmission) {
+        setRoundWinner({ player: winner, submission: winningSubmission });
 
         // Check if someone reached 2 wins
         if (winner.wins + 1 >= 2) {
@@ -584,6 +641,9 @@ export const useSongRush = () => {
             .from("profiles")
             .update({ game_wins: ((profile as { game_wins?: number })?.game_wins || 0) + 1 })
             .eq("id", winner.user_id);
+
+          // Award first win badge if applicable
+          await awardFirstWinBadge(winner.user_id);
 
           toast.success(`${winner.profile?.username || "Player"} wins the game!`);
           return;
@@ -601,10 +661,47 @@ export const useSongRush = () => {
       .eq("id", lobby.id);
   }, [lobby, user?.id, submissions, votes, players, profile]);
 
+  const awardFirstWinBadge = async (userId: string) => {
+    // Check if user already has the first win badge
+    const { data: existingBadges } = await supabase
+      .from("user_badges")
+      .select("*, badges!inner(name)")
+      .eq("user_id", userId);
+
+    const hasFirstWinBadge = existingBadges?.some((ub: any) => 
+      ub.badges?.name === "First Victory"
+    );
+
+    if (!hasFirstWinBadge) {
+      // Find the first win badge
+      const { data: badge } = await supabase
+        .from("badges")
+        .select("id")
+        .eq("name", "First Victory")
+        .maybeSingle();
+
+      if (badge) {
+        await supabase.from("user_badges").insert({
+          user_id: userId,
+          badge_id: badge.id,
+          displayed: true,
+        });
+
+        // Create notification
+        await supabase.from("notifications").insert({
+          user_id: userId,
+          type: "badge",
+          title: "New Badge Earned!",
+          message: "You earned the First Victory badge for your first Song Rush win!",
+        });
+      }
+    }
+  };
+
   const startNextRound = useCallback(async () => {
     if (!lobby || lobby.host_id !== user?.id) return;
 
-    const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
+    const theme = themes[Math.floor(Math.random() * themes.length)];
     const roundEnd = new Date(Date.now() + 120 * 1000).toISOString();
 
     await supabase
@@ -618,7 +715,7 @@ export const useSongRush = () => {
       .eq("id", lobby.id);
 
     setRoundWinner(null);
-  }, [lobby, user?.id]);
+  }, [lobby, user?.id, themes]);
 
   return {
     lobby,
@@ -628,11 +725,12 @@ export const useSongRush = () => {
     votes,
     chat,
     timeLeft,
+    publicCountdown,
     isLoading,
     roundWinner,
     createLobby,
+    createPublicLobby,
     joinLobby,
-    findPublicLobby,
     leaveLobby,
     startGame,
     submitSong,
