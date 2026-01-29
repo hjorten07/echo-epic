@@ -113,7 +113,7 @@ export const useWallPosts = () => {
           .eq("target_type", "wall_post")
           .in("target_id", postIds),
         supabase
-          .from("wall_post_replies")
+          .from("wall_post_replies" as any)
           .select("wall_post_id")
           .in("wall_post_id", postIds),
       ]);
@@ -124,7 +124,7 @@ export const useWallPosts = () => {
         const upvotes = postVotes.filter(v => v.vote_type === "upvote").length;
         const downvotes = postVotes.filter(v => v.vote_type === "downvote").length;
         const userVote = user ? postVotes.find(v => v.user_id === user.id)?.vote_type : null;
-        const replyCount = repliesResult.data?.filter(r => r.wall_post_id === post.id).length || 0;
+        const replyCount = (repliesResult.data as any[])?.filter((r: any) => r.wall_post_id === post.id).length || 0;
         
         return {
           ...post,
@@ -179,7 +179,7 @@ export const useWallPostReplies = (postId: string | undefined) => {
       if (!postId) return [];
 
       const { data, error } = await supabase
-        .from("wall_post_replies")
+        .from("wall_post_replies" as any)
         .select(`
           *,
           profile:user_id (username, avatar_url)
@@ -188,7 +188,7 @@ export const useWallPostReplies = (postId: string | undefined) => {
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return data as WallPostReply[];
+      return (data || []) as unknown as WallPostReply[];
     },
     enabled: !!postId,
   });
@@ -213,7 +213,7 @@ export const useCreateWallPostReply = () => {
         throw new Error("Content contains inappropriate words");
       }
 
-      const { error } = await supabase.from("wall_post_replies").insert({
+      const { error } = await supabase.from("wall_post_replies" as any).insert({
         wall_post_id: postId,
         user_id: user.id,
         content: content.trim(),

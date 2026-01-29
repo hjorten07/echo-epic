@@ -34,7 +34,7 @@ const extraThemes: ThemeOption[] = [
   { id: "teal", name: "Teal", colors: ["#0a1414", "#14b8a6", "#2dd4bf"] },
   { id: "amber", name: "Amber", colors: ["#1a1408", "#f59e0b", "#fbbf24"] },
   { id: "light", name: "Light Mode", colors: ["#f8fafc", "#3b82f6", "#60a5fa"] },
-  { id: "navy-gold", name: "Navy Gold", colors: ["#031B28", "#E89C31", "#DBA858"] },
+  { id: "navy-gold", name: "Navy Gold", colors: ["#0f1f2d", "#c9923b", "#d4a857"] },
 ];
 
 const AccountSection = () => {
@@ -382,7 +382,7 @@ const Settings = () => {
               </div>
 
               {/* Main Themes */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {mainThemes.map((t) => (
                   <button
                     key={t.id}
@@ -414,75 +414,68 @@ const Settings = () => {
                   </button>
                 ))}
 
-                {/* More themes toggle */}
-                <button
-                  onClick={() => setShowMoreThemes(!showMoreThemes)}
-                  className="relative p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all flex flex-col items-center justify-center"
-                >
-                  <div className="flex gap-1 mb-3 blur-sm opacity-60">
-                    {extraThemes[0].colors.map((color, i) => (
-                      <div
-                        key={i}
-                        className="w-6 h-6 rounded-full"
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                  {showMoreThemes ? (
-                    <Minus className="w-6 h-6 text-muted-foreground mb-1" />
-                  ) : (
-                    <Plus className="w-6 h-6 text-muted-foreground mb-1" />
-                  )}
-                  <p className="text-sm text-muted-foreground">{showMoreThemes ? "Less" : "More"}</p>
-                </button>
-              </div>
-
-              {/* Extra Themes */}
-              {showMoreThemes && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {extraThemes.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => handleThemeChange(t.id)}
-                      className={cn(
-                        "relative p-4 rounded-xl border-2 transition-all",
-                        theme === t.id
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      )}
-                    >
-                      {theme === t.id && (
-                        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                          <Check className="w-3 h-3 text-primary-foreground" />
+                {/* Extra themes - always show as grid items to avoid gap */}
+                {showMoreThemes ? (
+                  <>
+                    {extraThemes.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => handleThemeChange(t.id)}
+                        className={cn(
+                          "relative p-4 rounded-xl border-2 transition-all",
+                          theme === t.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        )}
+                      >
+                        {theme === t.id && (
+                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="w-3 h-3 text-primary-foreground" />
+                          </div>
+                        )}
+                        
+                        <div className="flex gap-1 mb-3">
+                          {t.colors.map((color, i) => (
+                            <div
+                              key={i}
+                              className="w-6 h-6 rounded-full"
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
                         </div>
-                      )}
-                      
-                      <div className="flex gap-1 mb-3">
-                        {t.colors.map((color, i) => (
-                          <div
-                            key={i}
-                            className="w-6 h-6 rounded-full"
-                            style={{ backgroundColor: color }}
-                          />
-                        ))}
-                      </div>
-                      
-                      <p className="text-sm font-medium">{t.name}</p>
+                        
+                        <p className="text-sm font-medium">{t.name}</p>
+                      </button>
+                    ))}
+                    {/* Less button at the end */}
+                    <button
+                      onClick={() => setShowMoreThemes(false)}
+                      className="p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all flex flex-col items-center justify-center"
+                    >
+                      <Minus className="w-6 h-6 text-muted-foreground mb-1" />
+                      <p className="text-sm text-muted-foreground">Less</p>
                     </button>
-                  ))}
-                  
-                  {/* Collapse button at the end */}
+                  </>
+                ) : (
+                  /* More themes toggle - always in the 6th position */
                   <button
-                    onClick={() => setShowMoreThemes(false)}
-                    className="relative p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all flex flex-col items-center justify-center"
+                    onClick={() => setShowMoreThemes(true)}
+                    className="p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all flex flex-col items-center justify-center"
                   >
-                    <div className="flex gap-1 mb-3 opacity-60">
-                      <Minus className="w-6 h-6 text-muted-foreground" />
+                    <div className="flex gap-1 mb-3 blur-sm opacity-60">
+                      {extraThemes[6].colors.map((color, i) => (
+                        <div
+                          key={i}
+                          className="w-6 h-6 rounded-full"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
                     </div>
-                    <p className="text-sm text-muted-foreground">Less</p>
+                    <Plus className="w-6 h-6 text-muted-foreground mb-1" />
+                    <p className="text-sm text-muted-foreground">More</p>
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </section>
 
             {/* Privacy */}

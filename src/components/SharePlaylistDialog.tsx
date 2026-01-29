@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Send, Loader2, Search, Check, Users, MessageSquare, ListMusic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ interface SharePlaylistDialogProps {
   playlistId: string;
   playlistName: string;
   playlistImage?: string;
+  playlistOwnerId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -27,10 +29,12 @@ export const SharePlaylistDialog = ({
   playlistId,
   playlistName,
   playlistImage,
+  playlistOwnerId,
   open,
   onOpenChange,
 }: SharePlaylistDialogProps) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<"dm" | "wall">("dm");
   const [searchQuery, setSearchQuery] = useState("");
@@ -75,15 +79,20 @@ export const SharePlaylistDialog = ({
     f.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Build the profile playlist URL
+  const getPlaylistUrl = () => {
+    return `/user/${playlistOwnerId}?playlist=${playlistId}`;
+  };
+
   const handleShareDM = async () => {
     if (!user || !selectedFriend) return;
 
     setSending(true);
     try {
-      const shareUrl = `${window.location.origin}/playlists?id=${playlistId}`;
+      const playlistUrl = getPlaylistUrl();
       const shareContent = message 
-        ? `${message}\n\n🎵 Playlist: ${playlistName}\n${shareUrl}`
-        : `Check out this playlist! 🎵\n\n${playlistName}\n${shareUrl}`;
+        ? `${message}\n\n🎵 Check out this playlist: ${playlistName}`
+        : `🎵 Check out this playlist: ${playlistName}`;
 
       const { error } = await supabase.from("messages").insert({
         sender_id: user.id,
@@ -96,6 +105,8 @@ export const SharePlaylistDialog = ({
       toast.success(`Shared with ${selectedFriend.username}!`);
       onOpenChange(false);
       resetState();
+      // Navigate to the playlist on their profile
+      navigate(playlistUrl);
     } catch (error) {
       console.error("Error sharing:", error);
       toast.error("Failed to share");
@@ -108,10 +119,10 @@ export const SharePlaylistDialog = ({
 
     setSending(true);
     try {
-      const shareUrl = `${window.location.origin}/playlists?id=${playlistId}`;
+      const playlistUrl = getPlaylistUrl();
       const shareContent = message 
-        ? `${message}\n\n🎵 Playlist: ${playlistName}\n${shareUrl}`
-        : `Check out my playlist! 🎵\n\n${playlistName}\n${shareUrl}`;
+        ? `${message}\n\n🎵 Check out my playlist: ${playlistName}`
+        : `🎵 Check out my playlist: ${playlistName}`;
 
       const { data: isValid } = await supabase.rpc('validate_message', {
         message_text: shareContent.trim()
@@ -134,6 +145,8 @@ export const SharePlaylistDialog = ({
       toast.success("Shared to wall!");
       onOpenChange(false);
       resetState();
+      // Navigate to the playlist on their profile
+      navigate(playlistUrl);
     } catch (error) {
       console.error("Error sharing:", error);
       toast.error("Failed to share");

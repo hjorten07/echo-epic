@@ -1,6 +1,7 @@
 import { useState, useCallback, memo, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Music2, Shuffle, Loader2, X, ListMusic } from "lucide-react";
+import { PlaylistSongImage } from "@/components/PlaylistSongImage";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -134,17 +135,12 @@ export const PlaylistThisOrThat = memo(({ songs, playlistName, onClose }: Playli
               className="flex-1 glass-card rounded-xl p-4 hover:border-primary/50 hover:bg-primary/5 transition-all group text-left"
             >
               <div className="aspect-square rounded-lg bg-secondary overflow-hidden mb-3">
-                {options[0].song_image ? (
-                  <img
-                    src={options[0].song_image}
-                    alt={options[0].song_name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Music2 className="w-12 h-12 text-muted-foreground/30" />
-                  </div>
-                )}
+                <PlaylistSongImage
+                  songId={options[0].song_id}
+                  songImage={options[0].song_image}
+                  songName={options[0].song_name}
+                  className="w-full h-full group-hover:scale-105 transition-transform"
+                />
               </div>
               <h3 className="font-display font-semibold truncate group-hover:text-primary transition-colors">
                 {options[0].song_name}
@@ -167,17 +163,12 @@ export const PlaylistThisOrThat = memo(({ songs, playlistName, onClose }: Playli
               className="flex-1 glass-card rounded-xl p-4 hover:border-primary/50 hover:bg-primary/5 transition-all group text-left"
             >
               <div className="aspect-square rounded-lg bg-secondary overflow-hidden mb-3">
-                {options[1].song_image ? (
-                  <img
-                    src={options[1].song_image}
-                    alt={options[1].song_name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Music2 className="w-12 h-12 text-muted-foreground/30" />
-                  </div>
-                )}
+                <PlaylistSongImage
+                  songId={options[1].song_id}
+                  songImage={options[1].song_image}
+                  songName={options[1].song_name}
+                  className="w-full h-full group-hover:scale-105 transition-transform"
+                />
               </div>
               <h3 className="font-display font-semibold truncate group-hover:text-primary transition-colors">
                 {options[1].song_name}
