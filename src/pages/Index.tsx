@@ -57,7 +57,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background relative">
       {/* Grid wave effect background - covers hero through games section */}
-      <div className="absolute inset-x-0 top-0 h-[900px] overflow-hidden pointer-events-none z-0">
+      <div className="absolute inset-x-0 top-0 h-[1100px] overflow-hidden pointer-events-none z-0">
         <GridWaveEffect />
       </div>
       

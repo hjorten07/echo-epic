@@ -34,9 +34,9 @@ export const useTheme = () => {
   const [theme, setThemeState] = useState<ColorTheme>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(THEME_KEY) as ColorTheme | null;
-      return saved || "default";
+      return saved || "navy-gold";
     }
-    return "default";
+    return "navy-gold";
   });
 
   useEffect(() => {
