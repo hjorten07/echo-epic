@@ -94,17 +94,17 @@ export const BadgesSection = ({ userId, canView = true, totalRatings = 0 }: Badg
       </div>
 
       {/* Streak Badge */}
-      {streak && streak.current_streak > 0 && (
+      {streak && (streak.current_streak > 0 || streak.longest_streak > 0) && (
         <div className="mb-4 p-4 rounded-xl bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 flex items-center gap-4">
           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 to-red-600 flex items-center justify-center shadow-lg">
             <span className="text-2xl">🔥</span>
           </div>
           <div>
             <p className="font-display font-bold text-lg text-foreground">
-              {streak.current_streak} day streak!
+              {streak.current_streak} day streak
             </p>
             <p className="text-sm text-muted-foreground">
-              Best: {streak.longest_streak} days
+              Highest: {streak.longest_streak} days
             </p>
           </div>
         </div>
@@ -190,35 +190,50 @@ export const BadgesSection = ({ userId, canView = true, totalRatings = 0 }: Badg
 
       {/* Edit Displayed Badges Modal */}
       <Dialog open={showEditBadges} onOpenChange={setShowEditBadges}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="font-display">
               Choose Displayed Badges (max 5)
             </DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-3 gap-4 max-h-96 overflow-y-auto py-4">
-            {userBadges?.map((ub) => (
-              <button
-                key={ub.id}
-                onClick={() => toggleBadgeSelection(ub.badge_id)}
-                className={cn(
-                  "flex flex-col items-center gap-2 p-3 rounded-xl border transition-all",
-                  selectedBadges.includes(ub.badge_id)
-                    ? "bg-primary/10 border-primary"
-                    : "bg-secondary/50 border-border hover:border-primary/50"
-                )}
-              >
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-                  <span className="text-2xl">{ub.badge?.icon}</span>
-                </div>
-                <span className="text-xs text-center truncate w-full">{ub.badge?.name}</span>
-                {selectedBadges.includes(ub.badge_id) && (
-                  <Check className="w-4 h-4 text-primary absolute top-2 right-2" />
-                )}
-              </button>
-            ))}
+          
+          {/* Streak display */}
+          {streak && (
+            <div className="p-3 rounded-lg bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 flex items-center gap-3">
+              <span className="text-xl">🔥</span>
+              <div className="text-sm">
+                <span className="font-medium">Current: {streak.current_streak} days</span>
+                <span className="text-muted-foreground mx-2">•</span>
+                <span className="text-muted-foreground">Highest: {streak.longest_streak} days</span>
+              </div>
+            </div>
+          )}
+          
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid grid-cols-3 gap-4 py-4">
+              {userBadges?.map((ub) => (
+                <button
+                  key={ub.id}
+                  onClick={() => toggleBadgeSelection(ub.badge_id)}
+                  className={cn(
+                    "relative flex flex-col items-center gap-2 p-3 rounded-xl border transition-all",
+                    selectedBadges.includes(ub.badge_id)
+                      ? "bg-primary/10 border-primary"
+                      : "bg-secondary/50 border-border hover:border-primary/50"
+                  )}
+                >
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+                    <span className="text-2xl">{ub.badge?.icon}</span>
+                  </div>
+                  <span className="text-xs text-center truncate w-full">{ub.badge?.name}</span>
+                  {selectedBadges.includes(ub.badge_id) && (
+                    <Check className="w-4 h-4 text-primary absolute top-2 right-2" />
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex justify-end gap-2 pt-4 border-t">
             <Button variant="outline" onClick={() => setShowEditBadges(false)}>
               Cancel
             </Button>

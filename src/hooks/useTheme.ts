@@ -12,7 +12,7 @@ export type ColorTheme =
   | "teal"
   | "amber"
   | "light"
-  | "slate-blue";
+  | "navy-gold";
 
 const THEME_KEY = "ratethemusic-theme";
 
@@ -27,7 +27,7 @@ const ALL_THEME_CLASSES = [
   "theme-teal",
   "theme-amber",
   "theme-light",
-  "theme-slate-blue",
+  "theme-navy-gold",
 ];
 
 export const useTheme = () => {

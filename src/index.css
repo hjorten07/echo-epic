@@ -422,43 +422,43 @@
     --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.08);
   }
 
-  /* Slate Blue Theme - Clean, professional blue-gray palette */
-  .theme-slate-blue {
-    --background: 215 28% 17%;
-    --foreground: 60 9% 88%;
+  /* Navy Gold Theme - Deep navy with warm gold accents */
+  .theme-navy-gold {
+    --background: 200 76% 9%;
+    --foreground: 43 45% 73%;
 
-    --card: 213 25% 21%;
-    --card-foreground: 60 9% 88%;
+    --card: 198 60% 13%;
+    --card-foreground: 43 45% 73%;
 
-    --popover: 214 26% 19%;
-    --popover-foreground: 60 9% 88%;
+    --popover: 199 68% 11%;
+    --popover-foreground: 43 45% 73%;
 
-    --primary: 210 40% 60%;
-    --primary-foreground: 215 28% 12%;
+    --primary: 38 76% 55%;
+    --primary-foreground: 200 76% 9%;
 
-    --secondary: 213 22% 26%;
-    --secondary-foreground: 60 9% 88%;
+    --secondary: 197 52% 17%;
+    --secondary-foreground: 43 45% 73%;
 
-    --muted: 214 20% 24%;
-    --muted-foreground: 210 15% 60%;
+    --muted: 198 45% 15%;
+    --muted-foreground: 200 20% 55%;
 
-    --accent: 210 40% 60%;
-    --accent-foreground: 215 28% 12%;
+    --accent: 38 76% 55%;
+    --accent-foreground: 200 76% 9%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 70% 30%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 213 18% 30%;
-    --input: 213 18% 30%;
-    --ring: 210 40% 60%;
+    --border: 198 40% 22%;
+    --input: 198 40% 22%;
+    --ring: 38 76% 55%;
 
-    --star-empty: 213 15% 35%;
-    --star-filled: 210 40% 60%;
-    --star-hover: 210 45% 70%;
+    --star-empty: 198 30% 28%;
+    --star-filled: 38 76% 55%;
+    --star-hover: 38 80% 65%;
 
-    --gradient-gold: linear-gradient(135deg, hsl(210 40% 60%), hsl(200 35% 55%));
-    --shadow-glow: 0 0 40px hsl(210 40% 60% / 0.2);
-    --shadow-card: 0 8px 32px hsl(0 0% 0% / 0.3);
+    --gradient-gold: linear-gradient(135deg, hsl(38 76% 55%), hsl(43 45% 60%));
+    --shadow-glow: 0 0 40px hsl(38 76% 55% / 0.2);
+    --shadow-card: 0 8px 32px hsl(0 0% 0% / 0.4);
   }
 }
 
