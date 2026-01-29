@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ListMusic, Plus, Trash2, Gamepad2, Loader2, Lock, Globe, Settings2 } from "lucide-react";
+import { ListMusic, Plus, Trash2, Gamepad2, Loader2, Lock, Globe, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { usePlaylists, usePlaylistSongs, useCreatePlaylist, useDeletePlaylist } from "@/hooks/usePlaylists";
+import { usePlaylists, useUserPublicPlaylists, usePlaylistSongs, useCreatePlaylist, useDeletePlaylist } from "@/hooks/usePlaylists";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PlaylistThisOrThat } from "@/components/PlaylistThisOrThat";
+import { SharePlaylistDialog } from "@/components/SharePlaylistDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ProfilePlaylistsProps {
   userId: string;
@@ -21,17 +23,20 @@ interface ProfilePlaylistsProps {
 }
 
 export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps) => {
-  const { data: playlists, isLoading } = usePlaylists();
+  const { user } = useAuth();
+  const { data: ownPlaylists, isLoading: ownLoading } = usePlaylists();
+  const { data: publicPlaylists, isLoading: publicLoading } = useUserPublicPlaylists(userId);
   const createPlaylist = useCreatePlaylist();
   const deletePlaylist = useDeletePlaylist();
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [newIsPublic, setNewIsPublic] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
+  const [sharePlaylistId, setSharePlaylistId] = useState<string | null>(null);
 
-  // For other users, we'd need to fetch their public playlists
-  // For now, only show playlists on own profile
-  const displayPlaylists = isOwnProfile ? playlists : [];
+  // Use own playlists for own profile, public playlists for others
+  const displayPlaylists = isOwnProfile ? ownPlaylists : publicPlaylists;
+  const isLoading = isOwnProfile ? ownLoading : publicLoading;
 
   // Fetch songs for active playlist
   const { data: playlistSongs } = usePlaylistSongs(activePlaylistId || "");
@@ -64,6 +69,12 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
     setActivePlaylistId(playlistId);
   };
 
+  const handleSharePlaylist = (e: React.MouseEvent, playlistId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSharePlaylistId(playlistId);
+  };
+
   if (isLoading) {
     return (
       <div className="mb-8">
@@ -76,6 +87,7 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
   }
 
   const activePlaylist = displayPlaylists?.find(p => p.id === activePlaylistId);
+  const sharePlaylist = displayPlaylists?.find(p => p.id === sharePlaylistId);
 
   return (
     <div className="mb-8">
@@ -141,9 +153,9 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
               className="flex items-center gap-4 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors group"
             >
               <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center overflow-hidden">
-                {(playlist as any).cover_image ? (
+                {playlist.cover_image ? (
                   <img 
-                    src={(playlist as any).cover_image} 
+                    src={playlist.cover_image} 
                     alt={playlist.name}
                     className="w-full h-full object-cover"
                   />
@@ -165,6 +177,17 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
                 )}
               </div>
               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                {user && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={(e) => handleSharePlaylist(e, playlist.id)}
+                    title="Share playlist"
+                    className="text-muted-foreground hover:text-primary"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </Button>
+                )}
                 <Button
                   size="icon"
                   variant="ghost"
@@ -204,6 +227,17 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
           songs={playlistSongs}
           playlistName={activePlaylist.name}
           onClose={() => setActivePlaylistId(null)}
+        />
+      )}
+
+      {/* Share Playlist Dialog */}
+      {sharePlaylistId && sharePlaylist && (
+        <SharePlaylistDialog
+          playlistId={sharePlaylist.id}
+          playlistName={sharePlaylist.name}
+          playlistImage={sharePlaylist.cover_image || undefined}
+          open={!!sharePlaylistId}
+          onOpenChange={(open) => !open && setSharePlaylistId(null)}
         />
       )}
     </div>

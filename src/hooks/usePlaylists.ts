@@ -9,6 +9,7 @@ export interface Playlist {
   name: string;
   description: string | null;
   is_public: boolean;
+  cover_image: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +43,41 @@ export const usePlaylists = () => {
       return data as Playlist[];
     },
     enabled: !!user,
+  });
+};
+
+// Fetch public playlists for any user (for viewing other profiles)
+export const useUserPublicPlaylists = (userId: string | undefined) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["user-public-playlists", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+
+      // If viewing own profile, get all playlists
+      if (user?.id === userId) {
+        const { data, error } = await supabase
+          .from("playlists")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        return data as Playlist[];
+      }
+
+      // For other users, only get public playlists
+      const { data, error } = await supabase
+        .from("playlists")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("is_public", true)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as Playlist[];
+    },
+    enabled: !!userId,
   });
 };
 
@@ -123,20 +159,24 @@ export const useUpdatePlaylist = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, name, description, isPublic }: {
+    mutationFn: async ({ id, name, description, isPublic, coverImage }: {
       id: string;
       name?: string;
       description?: string;
       isPublic?: boolean;
+      coverImage?: string;
     }) => {
+      const updates: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (name !== undefined) updates.name = name;
+      if (description !== undefined) updates.description = description;
+      if (isPublic !== undefined) updates.is_public = isPublic;
+      if (coverImage !== undefined) updates.cover_image = coverImage;
+
       const { error } = await supabase
         .from("playlists")
-        .update({
-          ...(name && { name }),
-          ...(description !== undefined && { description }),
-          ...(isPublic !== undefined && { is_public: isPublic }),
-          updated_at: new Date().toISOString(),
-        })
+        .update(updates)
         .eq("id", id);
 
       if (error) throw error;
@@ -144,6 +184,7 @@ export const useUpdatePlaylist = () => {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["playlists"] });
       queryClient.invalidateQueries({ queryKey: ["playlist", id] });
+      queryClient.invalidateQueries({ queryKey: ["user-public-playlists"] });
     },
   });
 };

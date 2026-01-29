@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Loader2, Send, Flag, Trash2, MoreVertical } from "lucide-react";
+import { Loader2, Send, Flag, Trash2, MoreVertical, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -47,13 +47,134 @@ const CelloIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+interface WallPostCardProps {
+  post: WallPost;
+  onReport: (post: WallPost) => void;
+}
+
+const WallPostCard = ({ post, onReport }: WallPostCardProps) => {
+  const { user } = useAuth();
+  const vote = useVote();
+  const deletePost = useDeleteWallPost();
+
+  const handleVote = (voteType: "upvote" | "downvote") => {
+    if (!user) return;
+    const newVote = post.userVote === voteType ? null : voteType;
+    vote.mutate({
+      targetType: "wall_post",
+      targetId: post.id,
+      voteType: newVote,
+    });
+  };
+
+  return (
+    <div className="glass-card rounded-xl p-4 group">
+      <div className="flex items-start gap-3">
+        <Link to={`/user/${post.user_id}`}>
+          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden shrink-0">
+            {post.profile?.avatar_url ? (
+              <img src={post.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="font-bold">{post.profile?.username?.[0]?.toUpperCase()}</span>
+            )}
+          </div>
+        </Link>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Link to={`/user/${post.user_id}`} className="font-semibold hover:text-primary">
+                {post.profile?.username}
+              </Link>
+              <span className="text-xs text-muted-foreground">
+                {format(new Date(post.created_at), "MMM d, h:mm a")}
+              </span>
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="w-8 h-8 opacity-0 group-hover:opacity-100">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover">
+                {user && user.id !== post.user_id && (
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => onReport(post)}
+                  >
+                    <Flag className="w-4 h-4 mr-2" />
+                    Report
+                  </DropdownMenuItem>
+                )}
+                {user && user.id === post.user_id && (
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => deletePost.mutate(post.id)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <p className="mt-2 text-foreground whitespace-pre-wrap break-words">
+            {post.content}
+          </p>
+
+          {/* Vote buttons */}
+          <div className="flex items-center gap-4 mt-3">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => handleVote("upvote")}
+                  disabled={!user}
+                  className={cn(
+                    "flex items-center gap-1 transition-colors",
+                    post.userVote === "upvote" 
+                      ? "text-primary" 
+                      : "text-muted-foreground hover:text-primary"
+                  )}
+                >
+                  <DrumIcon className="w-5 h-5" />
+                  <span className="text-sm">{post.upvotes}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Upvote</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => handleVote("downvote")}
+                  disabled={!user}
+                  className={cn(
+                    "flex items-center gap-1 transition-colors",
+                    post.userVote === "downvote" 
+                      ? "text-destructive" 
+                      : "text-muted-foreground hover:text-destructive"
+                  )}
+                >
+                  <CelloIcon className="w-5 h-5" />
+                  <span className="text-sm">{post.downvotes}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Downvote</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const SocialWall = () => {
   const { user } = useAuth();
   const { data: posts, isLoading } = useWallPosts();
   const createPost = useCreateWallPost();
-  const vote = useVote();
   const reportPost = useReportWallPost();
-  const deletePost = useDeleteWallPost();
 
   const [newPost, setNewPost] = useState("");
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
@@ -67,14 +188,9 @@ export const SocialWall = () => {
     });
   };
 
-  const handleVote = (post: WallPost, voteType: "upvote" | "downvote") => {
-    if (!user) return;
-    const newVote = post.userVote === voteType ? null : voteType;
-    vote.mutate({
-      targetType: "wall_post",
-      targetId: post.id,
-      voteType: newVote,
-    });
+  const handleOpenReport = (post: WallPost) => {
+    setReportingPost(post);
+    setReportDialogOpen(true);
   };
 
   const handleReport = () => {
@@ -136,108 +252,7 @@ export const SocialWall = () => {
       {posts && posts.length > 0 ? (
         <div className="space-y-4">
           {posts.map((post) => (
-            <div key={post.id} className="glass-card rounded-xl p-4 group">
-              <div className="flex items-start gap-3">
-                <Link to={`/user/${post.user_id}`}>
-                  <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden shrink-0">
-                    {post.profile?.avatar_url ? (
-                      <img src={post.profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="font-bold">{post.profile?.username?.[0]?.toUpperCase()}</span>
-                    )}
-                  </div>
-                </Link>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Link to={`/user/${post.user_id}`} className="font-semibold hover:text-primary">
-                        {post.profile?.username}
-                      </Link>
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(post.created_at), "MMM d, h:mm a")}
-                      </span>
-                    </div>
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="w-8 h-8 opacity-0 group-hover:opacity-100">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-popover">
-                        {user && user.id !== post.user_id && (
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => {
-                              setReportingPost(post);
-                              setReportDialogOpen(true);
-                            }}
-                          >
-                            <Flag className="w-4 h-4 mr-2" />
-                            Report
-                          </DropdownMenuItem>
-                        )}
-                        {user && user.id === post.user_id && (
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => deletePost.mutate(post.id)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  <p className="mt-2 text-foreground whitespace-pre-wrap break-words">
-                    {post.content}
-                  </p>
-
-                  {/* Vote buttons */}
-                  <div className="flex items-center gap-4 mt-3">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => handleVote(post, "upvote")}
-                          disabled={!user}
-                          className={cn(
-                            "flex items-center gap-1 transition-colors",
-                            post.userVote === "upvote" 
-                              ? "text-green-500" 
-                              : "text-muted-foreground hover:text-green-500"
-                          )}
-                        >
-                          <DrumIcon className="w-5 h-5" />
-                          <span className="text-sm">{post.upvotes}</span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>Upvote</TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => handleVote(post, "downvote")}
-                          disabled={!user}
-                          className={cn(
-                            "flex items-center gap-1 transition-colors",
-                            post.userVote === "downvote" 
-                              ? "text-red-500" 
-                              : "text-muted-foreground hover:text-red-500"
-                          )}
-                        >
-                          <CelloIcon className="w-5 h-5" />
-                          <span className="text-sm">{post.downvotes}</span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>Downvote</TooltipContent>
-                    </Tooltip>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <WallPostCard key={post.id} post={post} onReport={handleOpenReport} />
           ))}
         </div>
       ) : (

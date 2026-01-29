@@ -34,7 +34,7 @@ const extraThemes: ThemeOption[] = [
   { id: "teal", name: "Teal", colors: ["#0a1414", "#14b8a6", "#2dd4bf"] },
   { id: "amber", name: "Amber", colors: ["#1a1408", "#f59e0b", "#fbbf24"] },
   { id: "light", name: "Light Mode", colors: ["#f8fafc", "#3b82f6", "#60a5fa"] },
-  { id: "slate-blue", name: "Slate Blue", colors: ["#2a3a4d", "#7b9ab8", "#d4dce4"] },
+  { id: "navy-gold", name: "Navy Gold", colors: ["#031B28", "#E89C31", "#DBA858"] },
 ];
 
 const AccountSection = () => {
@@ -414,25 +414,27 @@ const Settings = () => {
                   </button>
                 ))}
 
-                {/* More themes toggle - only show when collapsed */}
-                {!showMoreThemes && (
-                  <button
-                    onClick={() => setShowMoreThemes(true)}
-                    className="relative p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all flex flex-col items-center justify-center"
-                  >
-                    <div className="flex gap-1 mb-3 blur-sm opacity-60">
-                      {extraThemes[0].colors.map((color, i) => (
-                        <div
-                          key={i}
-                          className="w-6 h-6 rounded-full"
-                          style={{ backgroundColor: color }}
-                        />
-                      ))}
-                    </div>
+                {/* More themes toggle */}
+                <button
+                  onClick={() => setShowMoreThemes(!showMoreThemes)}
+                  className="relative p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all flex flex-col items-center justify-center"
+                >
+                  <div className="flex gap-1 mb-3 blur-sm opacity-60">
+                    {extraThemes[0].colors.map((color, i) => (
+                      <div
+                        key={i}
+                        className="w-6 h-6 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                  {showMoreThemes ? (
+                    <Minus className="w-6 h-6 text-muted-foreground mb-1" />
+                  ) : (
                     <Plus className="w-6 h-6 text-muted-foreground mb-1" />
-                    <p className="text-sm text-muted-foreground">More</p>
-                  </button>
-                )}
+                  )}
+                  <p className="text-sm text-muted-foreground">{showMoreThemes ? "Less" : "More"}</p>
+                </button>
               </div>
 
               {/* Extra Themes */}

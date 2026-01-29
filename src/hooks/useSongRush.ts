@@ -129,7 +129,7 @@ export const useSongRush = () => {
     };
   }, []);
 
-  // Timer logic for game phases
+  // Timer logic for game phases with auto-transition
   useEffect(() => {
     if (lobby?.round_end_at) {
       const updateTimer = () => {
@@ -138,8 +138,20 @@ export const useSongRush = () => {
         const remaining = Math.max(0, Math.floor((end - now) / 1000));
         setTimeLeft(remaining);
 
+        // Auto-transition when timer hits 0 in public lobbies
         if (remaining === 0 && timerRef.current) {
           clearInterval(timerRef.current);
+          
+          // For public lobbies, auto-transition (any player can trigger)
+          if (!lobby.is_private) {
+            if (lobby.status === "submitting") {
+              // Auto-advance to voting
+              autoAdvanceToVoting();
+            } else if (lobby.status === "voting") {
+              // Auto-calculate results
+              autoCalculateResults();
+            }
+          }
         }
       };
 
@@ -150,7 +162,7 @@ export const useSongRush = () => {
         if (timerRef.current) clearInterval(timerRef.current);
       };
     }
-  }, [lobby?.round_end_at]);
+  }, [lobby?.round_end_at, lobby?.is_private, lobby?.status]);
 
   // Public lobby countdown logic
   useEffect(() => {
@@ -567,7 +579,9 @@ export const useSongRush = () => {
   }, [lobby, user]);
 
   const advanceToVoting = useCallback(async () => {
-    if (!lobby || lobby.host_id !== user?.id) return;
+    if (!lobby) return;
+    // For private lobbies, only host can advance
+    if (lobby.is_private && lobby.host_id !== user?.id) return;
 
     const roundEnd = new Date(Date.now() + 60 * 1000).toISOString();
 
@@ -580,8 +594,35 @@ export const useSongRush = () => {
       .eq("id", lobby.id);
   }, [lobby, user?.id]);
 
-  const calculateResults = useCallback(async () => {
-    if (!lobby || lobby.host_id !== user?.id) return;
+  // Auto-advance to voting for public lobbies when time runs out
+  const autoAdvanceToVoting = useCallback(async () => {
+    if (!lobby || lobby.is_private) return;
+    // Only host triggers auto-advance to prevent duplicates
+    if (lobby.host_id !== user?.id) return;
+
+    const roundEnd = new Date(Date.now() + 60 * 1000).toISOString();
+
+    await supabase
+      .from("game_lobbies")
+      .update({
+        status: "voting",
+        round_end_at: roundEnd,
+      })
+      .eq("id", lobby.id);
+  }, [lobby, user?.id]);
+
+  // Auto-calculate results for public lobbies when voting time runs out
+  const autoCalculateResults = useCallback(async () => {
+    if (!lobby || lobby.is_private) return;
+    // Only host triggers to prevent duplicates
+    if (lobby.host_id !== user?.id) return;
+    
+    // Call the same logic as calculateResults
+    await calculateResultsInternal();
+  }, [lobby, user?.id]);
+
+  const calculateResultsInternal = useCallback(async () => {
+    if (!lobby) return;
 
     // Calculate scores
     const roundSubmissions = submissions.filter(s => s.round === lobby.current_round);
@@ -659,7 +700,15 @@ export const useSongRush = () => {
         round_end_at: new Date(Date.now() + 10 * 1000).toISOString(),
       })
       .eq("id", lobby.id);
-  }, [lobby, user?.id, submissions, votes, players, profile]);
+  }, [lobby, submissions, votes, players, profile]);
+
+  const calculateResults = useCallback(async () => {
+    if (!lobby) return;
+    // For private lobbies, only host can trigger
+    if (lobby.is_private && lobby.host_id !== user?.id) return;
+    
+    await calculateResultsInternal();
+  }, [lobby, user?.id, calculateResultsInternal]);
 
   const awardFirstWinBadge = async (userId: string) => {
     // Check if user already has the first win badge
