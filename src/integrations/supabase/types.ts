@@ -1049,6 +1049,45 @@ export type Database = {
           },
         ]
       }
+      wall_post_replies: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          user_id: string
+          wall_post_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          user_id: string
+          wall_post_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+          wall_post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wall_post_replies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wall_post_replies_wall_post_id_fkey"
+            columns: ["wall_post_id"]
+            isOneToOne: false
+            referencedRelation: "wall_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wall_posts: {
         Row: {
           content: string

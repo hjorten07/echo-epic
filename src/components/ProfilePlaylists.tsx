@@ -236,6 +236,7 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
           playlistId={sharePlaylist.id}
           playlistName={sharePlaylist.name}
           playlistImage={sharePlaylist.cover_image || undefined}
+          playlistOwnerId={userId}
           open={!!sharePlaylistId}
           onOpenChange={(open) => !open && setSharePlaylistId(null)}
         />

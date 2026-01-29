@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, ListMusic, Trash2, Play, Loader2, Music, Settings2, Globe, Lock } from "lucide-react";
+import { Plus, ListMusic, Trash2, Play, Loader2, Music, Settings2, Globe, Lock, Share2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +23,10 @@ import {
 } from "@/hooks/usePlaylists";
 import { PlaylistSettingsDialog } from "@/components/PlaylistSettingsDialog";
 import { PlaylistThisOrThat } from "@/components/PlaylistThisOrThat";
+import { SharePlaylistDialog } from "@/components/SharePlaylistDialog";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { PlaylistSongImage } from "@/components/PlaylistSongImage";
 
 const Playlists = () => {
   const { user } = useAuth();
@@ -36,7 +38,7 @@ const Playlists = () => {
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [playingThisOrThat, setPlayingThisOrThat] = useState(false);
-  
+  const [showShare, setShowShare] = useState(false);
   const { data: playlists, isLoading } = usePlaylists();
   const { data: playlistDetails } = usePlaylist(selectedPlaylist || undefined);
   const { data: playlistSongs } = usePlaylistSongs(selectedPlaylist || undefined);
@@ -218,6 +220,16 @@ const Playlists = () => {
                           Play This or That
                         </Button>
                       )}
+                      {playlistDetails?.is_public && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setShowShare(true)}
+                          title="Share playlist"
+                        >
+                          <Share2 className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="icon"
@@ -269,19 +281,14 @@ const Playlists = () => {
                           </span>
                           <Link
                             to={`/song/${song.song_id}`}
-                            className="w-10 h-10 rounded-lg bg-muted overflow-hidden shrink-0"
+                            className="w-10 h-10 rounded-lg overflow-hidden shrink-0"
                           >
-                            {song.song_image ? (
-                              <img 
-                                src={song.song_image} 
-                                alt={song.song_name} 
-                                className="w-full h-full object-cover" 
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Music className="w-5 h-5 text-muted-foreground" />
-                              </div>
-                            )}
+                            <PlaylistSongImage
+                              songId={song.song_id}
+                              songImage={song.song_image}
+                              songName={song.song_name}
+                              className="w-full h-full rounded-lg"
+                            />
                           </Link>
                           <Link 
                             to={`/song/${song.song_id}`}
@@ -379,6 +386,18 @@ const Playlists = () => {
           playlist={playlistDetails as any}
           open={showSettings}
           onOpenChange={setShowSettings}
+        />
+      )}
+
+      {/* Share Playlist Dialog */}
+      {selectedPlaylist && playlistDetails && user && (
+        <SharePlaylistDialog
+          playlistId={selectedPlaylist}
+          playlistName={playlistDetails.name}
+          playlistImage={(playlistDetails as any).cover_image || undefined}
+          playlistOwnerId={user.id}
+          open={showShare}
+          onOpenChange={setShowShare}
         />
       )}
 

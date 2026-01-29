@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Loader2, Send, Flag, Trash2, MoreVertical, MessageSquare } from "lucide-react";
+import { Loader2, Send, Flag, Trash2, MoreVertical, MessageSquare, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useWallPosts, useCreateWallPost, useVote, useReportWallPost, useDeleteWallPost, type WallPost } from "@/hooks/useSocialFeatures";
+import { WallPostDiscussion } from "@/components/WallPostDiscussion";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -50,9 +51,10 @@ const CelloIcon = ({ className }: { className?: string }) => (
 interface WallPostCardProps {
   post: WallPost;
   onReport: (post: WallPost) => void;
+  onOpenDiscussion: (post: WallPost) => void;
 }
 
-const WallPostCard = ({ post, onReport }: WallPostCardProps) => {
+const WallPostCard = ({ post, onReport, onOpenDiscussion }: WallPostCardProps) => {
   const { user } = useAuth();
   const vote = useVote();
   const deletePost = useDeleteWallPost();
@@ -68,9 +70,12 @@ const WallPostCard = ({ post, onReport }: WallPostCardProps) => {
   };
 
   return (
-    <div className="glass-card rounded-xl p-4 group">
+    <div 
+      className="glass-card rounded-xl p-4 group cursor-pointer hover:border-primary/30 transition-colors"
+      onClick={() => onOpenDiscussion(post)}
+    >
       <div className="flex items-start gap-3">
-        <Link to={`/user/${post.user_id}`}>
+        <Link to={`/user/${post.user_id}`} onClick={(e) => e.stopPropagation()}>
           <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden shrink-0">
             {post.profile?.avatar_url ? (
               <img src={post.profile.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -83,7 +88,11 @@ const WallPostCard = ({ post, onReport }: WallPostCardProps) => {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Link to={`/user/${post.user_id}`} className="font-semibold hover:text-primary">
+              <Link 
+                to={`/user/${post.user_id}`} 
+                className="font-semibold hover:text-primary"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {post.profile?.username}
               </Link>
               <span className="text-xs text-muted-foreground">
@@ -93,7 +102,12 @@ const WallPostCard = ({ post, onReport }: WallPostCardProps) => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="w-8 h-8 opacity-0 group-hover:opacity-100">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="w-8 h-8 opacity-0 group-hover:opacity-100"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <MoreVertical className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -101,7 +115,10 @@ const WallPostCard = ({ post, onReport }: WallPostCardProps) => {
                 {user && user.id !== post.user_id && (
                   <DropdownMenuItem
                     className="text-destructive"
-                    onClick={() => onReport(post)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReport(post);
+                    }}
                   >
                     <Flag className="w-4 h-4 mr-2" />
                     Report
@@ -110,7 +127,10 @@ const WallPostCard = ({ post, onReport }: WallPostCardProps) => {
                 {user && user.id === post.user_id && (
                   <DropdownMenuItem
                     className="text-destructive"
-                    onClick={() => deletePost.mutate(post.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deletePost.mutate(post.id);
+                    }}
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete
@@ -124,8 +144,8 @@ const WallPostCard = ({ post, onReport }: WallPostCardProps) => {
             {post.content}
           </p>
 
-          {/* Vote buttons */}
-          <div className="flex items-center gap-4 mt-3">
+          {/* Vote buttons and reply count */}
+          <div className="flex items-center gap-4 mt-3" onClick={(e) => e.stopPropagation()}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -163,6 +183,13 @@ const WallPostCard = ({ post, onReport }: WallPostCardProps) => {
               </TooltipTrigger>
               <TooltipContent>Downvote</TooltipContent>
             </Tooltip>
+
+            <button className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors">
+              <MessageSquare className="w-5 h-5" />
+              <span className="text-sm">{post.replyCount || 0}</span>
+            </button>
+
+            <ChevronRight className="w-5 h-5 text-muted-foreground ml-auto" />
           </div>
         </div>
       </div>
@@ -180,6 +207,7 @@ export const SocialWall = () => {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportingPost, setReportingPost] = useState<WallPost | null>(null);
   const [reportReason, setReportReason] = useState("");
+  const [selectedPost, setSelectedPost] = useState<WallPost | null>(null);
 
   const handlePost = () => {
     if (!newPost.trim()) return;
@@ -252,7 +280,12 @@ export const SocialWall = () => {
       {posts && posts.length > 0 ? (
         <div className="space-y-4">
           {posts.map((post) => (
-            <WallPostCard key={post.id} post={post} onReport={handleOpenReport} />
+            <WallPostCard 
+              key={post.id} 
+              post={post} 
+              onReport={handleOpenReport}
+              onOpenDiscussion={setSelectedPost}
+            />
           ))}
         </div>
       ) : (
@@ -292,6 +325,15 @@ export const SocialWall = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Discussion Modal */}
+      {selectedPost && (
+        <WallPostDiscussion
+          post={selectedPost}
+          open={!!selectedPost}
+          onOpenChange={(open) => !open && setSelectedPost(null)}
+        />
+      )}
     </div>
   );
 };
