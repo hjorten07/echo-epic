@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { ThisOrThat } from "@/components/ThisOrThat";
 import { HigherLowerGame } from "@/components/HigherLowerGame";
 import { SongRushGame } from "@/components/SongRush/SongRushGame";
+import { GridWaveEffect } from "@/components/GridWaveEffect";
 import { cn } from "@/lib/utils";
 
 type GameType = "this-or-that" | "higher-lower" | "song-rush";
@@ -36,8 +37,13 @@ const Games = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="pt-24 pb-20">
-        <div className="container mx-auto px-4">
+      <main className="pt-24 pb-20 relative">
+        {/* Grid wave effect background */}
+        <div className="absolute inset-0 overflow-hidden">
+          <GridWaveEffect />
+        </div>
+        
+        <div className="container mx-auto px-4 relative z-10">
           {/* Header */}
           <div className="text-center mb-12">
             <div className="flex items-center justify-center gap-3 mb-4">
@@ -51,29 +57,34 @@ const Games = () => {
             </p>
           </div>
 
-          {/* Game Selector */}
-          <div className="flex justify-center gap-4 mb-12">
-            {games.map((game) => (
-              <button
-                key={game.id}
-                onClick={() => setSelectedGame(game.id)}
-                className={cn(
-                  "flex flex-col items-center gap-2 p-6 rounded-2xl transition-all min-w-[200px]",
-                  selectedGame === game.id
-                    ? "bg-primary text-primary-foreground shadow-glow"
-                    : "glass-card hover:border-primary/30"
-                )}
-              >
-                <game.icon className="w-8 h-8" />
-                <span className="font-display font-bold">{game.name}</span>
-                <span className={cn(
-                  "text-sm text-center",
-                  selectedGame === game.id ? "text-primary-foreground/80" : "text-muted-foreground"
-                )}>
-                  {game.description}
-                </span>
-              </button>
-            ))}
+          {/* Game Selector with grid background */}
+          <div className="relative mb-12">
+            {/* Faint grid lines */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] rounded-2xl pointer-events-none" />
+            
+            <div className="flex justify-center gap-4 relative z-10">
+              {games.map((game) => (
+                <button
+                  key={game.id}
+                  onClick={() => setSelectedGame(game.id)}
+                  className={cn(
+                    "flex flex-col items-center gap-2 p-6 rounded-2xl transition-all min-w-[200px]",
+                    selectedGame === game.id
+                      ? "bg-primary text-primary-foreground shadow-glow"
+                      : "glass-card hover:border-primary/30"
+                  )}
+                >
+                  <game.icon className="w-8 h-8" />
+                  <span className="font-display font-bold">{game.name}</span>
+                  <span className={cn(
+                    "text-sm text-center",
+                    selectedGame === game.id ? "text-primary-foreground/80" : "text-muted-foreground"
+                  )}>
+                    {game.description}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Game Content */}

@@ -16,6 +16,19 @@ export interface WallPost {
   upvotes: number;
   downvotes: number;
   userVote?: "upvote" | "downvote" | null;
+  replyCount?: number;
+}
+
+export interface WallPostReply {
+  id: string;
+  wall_post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  profile?: {
+    username: string;
+    avatar_url: string | null;
+  };
 }
 
 // Hot Takes
@@ -90,26 +103,35 @@ export const useWallPosts = () => {
 
       if (error) throw error;
 
-      // Get votes for all posts
+      // Get votes and reply counts for all posts
       const postIds = posts?.map(p => p.id) || [];
-      const { data: votes } = await supabase
-        .from("votes")
-        .select("*")
-        .eq("target_type", "wall_post")
-        .in("target_id", postIds);
+      
+      const [votesResult, repliesResult] = await Promise.all([
+        supabase
+          .from("votes")
+          .select("*")
+          .eq("target_type", "wall_post")
+          .in("target_id", postIds),
+        supabase
+          .from("wall_post_replies")
+          .select("wall_post_id")
+          .in("wall_post_id", postIds),
+      ]);
 
       // Calculate vote counts and user's vote
       return posts?.map(post => {
-        const postVotes = votes?.filter(v => v.target_id === post.id) || [];
+        const postVotes = votesResult.data?.filter(v => v.target_id === post.id) || [];
         const upvotes = postVotes.filter(v => v.vote_type === "upvote").length;
         const downvotes = postVotes.filter(v => v.vote_type === "downvote").length;
         const userVote = user ? postVotes.find(v => v.user_id === user.id)?.vote_type : null;
+        const replyCount = repliesResult.data?.filter(r => r.wall_post_id === post.id).length || 0;
         
         return {
           ...post,
           upvotes,
           downvotes,
           userVote,
+          replyCount,
         } as WallPost;
       }) || [];
     },
@@ -146,6 +168,65 @@ export const useCreateWallPost = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to post");
+    },
+  });
+};
+
+export const useWallPostReplies = (postId: string | undefined) => {
+  return useQuery({
+    queryKey: ["wall-post-replies", postId],
+    queryFn: async () => {
+      if (!postId) return [];
+
+      const { data, error } = await supabase
+        .from("wall_post_replies")
+        .select(`
+          *,
+          profile:user_id (username, avatar_url)
+        `)
+        .eq("wall_post_id", postId)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      return data as WallPostReply[];
+    },
+    enabled: !!postId,
+  });
+};
+
+export const useCreateWallPostReply = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ postId, content }: { 
+      postId: string; 
+      content: string; 
+    }) => {
+      if (!user) throw new Error("Must be logged in");
+
+      const { data: isValid } = await supabase.rpc('validate_message', {
+        message_text: content.trim()
+      });
+
+      if (!isValid) {
+        throw new Error("Content contains inappropriate words");
+      }
+
+      const { error } = await supabase.from("wall_post_replies").insert({
+        wall_post_id: postId,
+        user_id: user.id,
+        content: content.trim(),
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { postId }) => {
+      queryClient.invalidateQueries({ queryKey: ["wall-post-replies", postId] });
+      queryClient.invalidateQueries({ queryKey: ["wall-posts"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to reply");
     },
   });
 };
