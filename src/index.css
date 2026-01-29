@@ -422,43 +422,43 @@
     --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.08);
   }
 
-  /* Navy Gold Theme - Deep navy with warm gold accents */
+  /* Navy Gold Theme - Professional deep navy with warm gold accents */
   .theme-navy-gold {
-    --background: 200 76% 9%;
-    --foreground: 43 45% 73%;
+    --background: 210 60% 6%;
+    --foreground: 40 30% 85%;
 
-    --card: 198 60% 13%;
-    --card-foreground: 43 45% 73%;
+    --card: 210 50% 10%;
+    --card-foreground: 40 30% 85%;
 
-    --popover: 199 68% 11%;
-    --popover-foreground: 43 45% 73%;
+    --popover: 210 55% 8%;
+    --popover-foreground: 40 30% 85%;
 
-    --primary: 38 76% 55%;
-    --primary-foreground: 200 76% 9%;
+    --primary: 40 75% 52%;
+    --primary-foreground: 210 60% 6%;
 
-    --secondary: 197 52% 17%;
-    --secondary-foreground: 43 45% 73%;
+    --secondary: 210 45% 14%;
+    --secondary-foreground: 40 30% 85%;
 
-    --muted: 198 45% 15%;
-    --muted-foreground: 200 20% 55%;
+    --muted: 210 40% 12%;
+    --muted-foreground: 210 20% 50%;
 
-    --accent: 38 76% 55%;
-    --accent-foreground: 200 76% 9%;
+    --accent: 40 75% 52%;
+    --accent-foreground: 210 60% 6%;
 
-    --destructive: 0 70% 30%;
+    --destructive: 0 65% 40%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 198 40% 22%;
-    --input: 198 40% 22%;
-    --ring: 38 76% 55%;
+    --border: 210 35% 18%;
+    --input: 210 35% 18%;
+    --ring: 40 75% 52%;
 
-    --star-empty: 198 30% 28%;
-    --star-filled: 38 76% 55%;
-    --star-hover: 38 80% 65%;
+    --star-empty: 210 30% 22%;
+    --star-filled: 40 75% 52%;
+    --star-hover: 40 80% 62%;
 
-    --gradient-gold: linear-gradient(135deg, hsl(38 76% 55%), hsl(43 45% 60%));
-    --shadow-glow: 0 0 40px hsl(38 76% 55% / 0.2);
-    --shadow-card: 0 8px 32px hsl(0 0% 0% / 0.4);
+    --gradient-gold: linear-gradient(135deg, hsl(40 75% 52%), hsl(45 50% 45%));
+    --shadow-glow: 0 0 40px hsl(40 75% 52% / 0.15);
+    --shadow-card: 0 8px 32px hsl(0 0% 0% / 0.5);
   }
 }
 
