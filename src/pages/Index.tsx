@@ -7,6 +7,7 @@ import { HigherLowerGame } from "@/components/HigherLowerGame";
 import { MusicCard } from "@/components/MusicCard";
 import { StarRating } from "@/components/StarRating";
 import { SoundWaveAnimation } from "@/components/SoundWaveAnimation";
+import { GridWaveEffect } from "@/components/GridWaveEffect";
 import { LazyImage } from "@/components/LazyImage";
 import { Loader2 } from "lucide-react";
 import { useRecentRatings } from "@/hooks/useRatings";
@@ -54,10 +55,15 @@ const Index = () => {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      {/* Grid wave effect background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <GridWaveEffect />
+      </div>
+      
       <Navbar />
       
-      <main className="pt-16">
+      <main className="pt-16 relative z-10">
         <HeroSection />
         
         <div className="container mx-auto px-4 pb-20">

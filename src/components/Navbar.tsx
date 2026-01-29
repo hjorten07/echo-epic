@@ -59,42 +59,42 @@ export const Navbar = () => {
             <Link
               to="/"
               className={cn(
-                "flex items-center gap-2 transition-colors story-link",
+                "flex items-center gap-2 transition-all story-link group",
                 isActive("/") ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Home className="w-4 h-4" />
-              <span>Home</span>
+              <span className="inline-block transition-transform duration-200 group-active:translate-y-[-2px]">Home</span>
             </Link>
             <Link
               to="/top100"
               className={cn(
-                "flex items-center gap-2 transition-colors story-link",
+                "flex items-center gap-2 transition-all story-link group",
                 isActive("/top100") ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <TrendingUp className="w-4 h-4" />
-              <span>Top 100</span>
+              <span className="inline-block transition-transform duration-200 group-active:translate-y-[-2px]">Top 100</span>
             </Link>
             <Link
               to="/social"
               className={cn(
-                "flex items-center gap-2 transition-colors story-link",
+                "flex items-center gap-2 transition-all story-link group",
                 isActive("/social") ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Users className="w-4 h-4" />
-              <span>Social</span>
+              <span className="inline-block transition-transform duration-200 group-active:translate-y-[-2px]">Social</span>
             </Link>
             <Link
               to="/games"
               className={cn(
-                "flex items-center gap-2 transition-colors story-link",
+                "flex items-center gap-2 transition-all story-link group",
                 isActive("/games") ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Gamepad2 className="w-4 h-4" />
-              <span>Games</span>
+              <span className="inline-block transition-transform duration-200 group-active:translate-y-[-2px]">Games</span>
             </Link>
           </div>
 

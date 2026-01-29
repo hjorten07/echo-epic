@@ -21,6 +21,7 @@ import Messages from "./pages/Messages";
 import Conversations from "./pages/Conversations";
 import Recommendations from "./pages/Recommendations";
 import Playlists from "./pages/Playlists";
+import PlaylistView from "./pages/PlaylistView";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
@@ -68,6 +69,7 @@ const App = () => {
                 <Route path="/top100" element={<Top100 />} />
                 <Route path="/recommendations" element={<Recommendations />} />
                 <Route path="/playlists" element={<Playlists />} />
+                <Route path="/playlist/:playlistId" element={<PlaylistView />} />
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/artist/:id" element={<Artist />} />
                 <Route path="/album/:id" element={<Album />} />

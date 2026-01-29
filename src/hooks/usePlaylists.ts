@@ -51,7 +51,7 @@ export const useUserPublicPlaylists = (userId: string | undefined) => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["user-public-playlists", userId],
+    queryKey: ["user-public-playlists", userId, user?.id],
     queryFn: async () => {
       if (!userId) return [];
 
@@ -62,7 +62,10 @@ export const useUserPublicPlaylists = (userId: string | undefined) => {
           .select("*")
           .eq("user_id", userId)
           .order("created_at", { ascending: false });
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching own playlists:", error);
+          return [];
+        }
         return data as Playlist[];
       }
 
@@ -74,7 +77,10 @@ export const useUserPublicPlaylists = (userId: string | undefined) => {
         .eq("is_public", true)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching public playlists:", error);
+        return [];
+      }
       return data as Playlist[];
     },
     enabled: !!userId,

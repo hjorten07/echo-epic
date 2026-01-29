@@ -79,9 +79,9 @@ export const SharePlaylistDialog = ({
     f.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Build the profile playlist URL
+  // Build the playlist view URL
   const getPlaylistUrl = () => {
-    return `/user/${playlistOwnerId}?playlist=${playlistId}`;
+    return `/playlist/${playlistId}`;
   };
 
   const handleShareDM = async () => {
