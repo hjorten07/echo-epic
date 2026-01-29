@@ -149,7 +149,7 @@ export const ProfilePlaylists = ({ userId, isOwnProfile }: ProfilePlaylistsProps
           {displayPlaylists.map((playlist) => (
             <Link
               key={playlist.id}
-              to={`/playlists?id=${playlist.id}`}
+              to={`/playlist/${playlist.id}`}
               className="flex items-center gap-4 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors group"
             >
               <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center overflow-hidden">

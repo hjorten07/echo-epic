@@ -34,14 +34,15 @@ const Games = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      {/* Grid wave effect background - covers entire page */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <GridWaveEffect />
+      </div>
+      
       <Navbar />
       
-      <main className="pt-24 pb-20 relative">
-        {/* Grid wave effect background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <GridWaveEffect />
-        </div>
+      <main className="pt-24 pb-20 relative z-10">
         
         <div className="container mx-auto px-4 relative z-10">
           {/* Header */}

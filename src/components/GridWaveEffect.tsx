@@ -29,9 +29,9 @@ export const GridWaveEffect = memo(({ className = "" }: GridWaveEffectProps) => 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Check if Navy Gold theme is active
+    // Effect is now available on all themes
     const checkTheme = () => {
-      return document.documentElement.classList.contains("theme-navy-gold");
+      return true; // Enable for all color schemes
     };
 
     const resizeCanvas = () => {
@@ -90,12 +90,8 @@ export const GridWaveEffect = memo(({ className = "" }: GridWaveEffectProps) => 
     const animate = () => {
       if (!ctx || !canvas) return;
       
-      // Only render if Navy Gold theme is active
-      if (!checkTheme()) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        animationRef.current = requestAnimationFrame(animate);
-        return;
-      }
+      // Clear canvas first
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 

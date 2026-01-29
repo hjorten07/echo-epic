@@ -209,28 +209,50 @@ export const BadgesSection = ({ userId, canView = true, totalRatings = 0 }: Badg
             </div>
           )}
           
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             <div className="grid grid-cols-3 gap-4 py-4">
-              {userBadges?.map((ub) => (
-                <button
-                  key={ub.id}
-                  onClick={() => toggleBadgeSelection(ub.badge_id)}
-                  className={cn(
-                    "relative flex flex-col items-center gap-2 p-3 rounded-xl border transition-all",
-                    selectedBadges.includes(ub.badge_id)
-                      ? "bg-primary/10 border-primary"
-                      : "bg-secondary/50 border-border hover:border-primary/50"
-                  )}
-                >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-                    <span className="text-2xl">{ub.badge?.icon}</span>
-                  </div>
-                  <span className="text-xs text-center truncate w-full">{ub.badge?.name}</span>
-                  {selectedBadges.includes(ub.badge_id) && (
-                    <Check className="w-4 h-4 text-primary absolute top-2 right-2" />
-                  )}
-                </button>
-              ))}
+              {/* Show ALL available badges, with earned ones selectable and unearned greyed out */}
+              {allBadges?.map((badge) => {
+                const isEarned = earnedBadgeIds.has(badge.id);
+                const isSelected = selectedBadges.includes(badge.id);
+                
+                if (!isEarned) {
+                  // Show unearned badges as greyed out (not clickable)
+                  return (
+                    <div
+                      key={badge.id}
+                      className="relative flex flex-col items-center gap-2 p-3 rounded-xl border bg-secondary/20 border-border opacity-40"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                        <span className="text-2xl grayscale">{badge.icon}</span>
+                      </div>
+                      <span className="text-xs text-center truncate w-full text-muted-foreground">{badge.name}</span>
+                    </div>
+                  );
+                }
+                
+                // Earned badges are selectable
+                return (
+                  <button
+                    key={badge.id}
+                    onClick={() => toggleBadgeSelection(badge.id)}
+                    className={cn(
+                      "relative flex flex-col items-center gap-2 p-3 rounded-xl border transition-all",
+                      isSelected
+                        ? "bg-primary/10 border-primary"
+                        : "bg-secondary/50 border-border hover:border-primary/50"
+                    )}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+                      <span className="text-2xl">{badge.icon}</span>
+                    </div>
+                    <span className="text-xs text-center truncate w-full">{badge.name}</span>
+                    {isSelected && (
+                      <Check className="w-4 h-4 text-primary absolute top-2 right-2" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t">
