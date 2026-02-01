@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { Music2, Mail, ArrowLeft, ArrowRight, User } from "lucide-react";
+import { Music2, Mail, ArrowLeft, ArrowRight, User, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
 
-type AuthStep = "credentials" | "username";
+type AuthStep = "credentials" | "username" | "forgot-password";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(8, "Password must be at least 8 characters");
@@ -34,6 +34,14 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; username?: string }>({});
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  
+  // Username availability check
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const [usernameCheckTimeout, setUsernameCheckTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  // Forgot password
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
@@ -55,6 +63,68 @@ const Auth = () => {
       navigate("/");
     }
   }, [user, navigate]);
+
+  // Check username availability with debounce
+  const checkUsernameAvailability = useCallback(async (usernameToCheck: string) => {
+    if (usernameToCheck.length < 3) {
+      setUsernameStatus("idle");
+      return;
+    }
+
+    setUsernameStatus("checking");
+    
+    const { data } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("username", usernameToCheck)
+      .maybeSingle();
+
+    if (data) {
+      setUsernameStatus("taken");
+    } else {
+      setUsernameStatus("available");
+    }
+  }, []);
+
+  const handleUsernameChange = (value: string) => {
+    const cleanedValue = value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    setUsername(cleanedValue);
+    setUsernameStatus("idle");
+    
+    if (usernameCheckTimeout) {
+      clearTimeout(usernameCheckTimeout);
+    }
+    
+    if (cleanedValue.length >= 3) {
+      const timeout = setTimeout(() => {
+        checkUsernameAvailability(cleanedValue);
+      }, 500);
+      setUsernameCheckTimeout(timeout);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const emailResult = emailSchema.safeParse(forgotPasswordEmail);
+    if (!emailResult.success) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    
+    setIsLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+      redirectTo: `${window.location.origin}/auth?mode=reset`,
+    });
+    setIsLoading(false);
+    
+    if (error) {
+      toast.error(error.message || "Failed to send reset email");
+    } else {
+      setForgotPasswordSent(true);
+      toast.success("Password reset email sent!");
+    }
+  };
 
   const validateCredentials = () => {
     const newErrors: typeof errors = {};
@@ -79,6 +149,10 @@ const Auth = () => {
     const usernameResult = usernameSchema.safeParse(username);
     if (!usernameResult.success) {
       newErrors.username = usernameResult.error.errors[0].message;
+    }
+    
+    if (usernameStatus === "taken") {
+      newErrors.username = "This username is taken, please pick another one!";
     }
 
     setErrors(newErrors);
@@ -127,9 +201,13 @@ const Auth = () => {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           {/* Back Button */}
-          {step === "username" && (
+          {(step === "username" || step === "forgot-password") && (
             <button
-              onClick={() => setStep("credentials")}
+              onClick={() => {
+                setStep("credentials");
+                setForgotPasswordSent(false);
+                setForgotPasswordEmail("");
+              }}
               className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -207,6 +285,15 @@ const Auth = () => {
                 )}
               </Button>
 
+              {!isSignup && (
+                <button
+                  type="button"
+                  onClick={() => setStep("forgot-password")}
+                  className="w-full text-center text-sm text-primary hover:underline"
+                >
+                  Forgot password?
+                </button>
+              )}
 
               <p className="text-center text-sm text-muted-foreground">
                 {isSignup ? (
@@ -245,23 +332,101 @@ const Auth = () => {
                     type="text"
                     placeholder="musiclover42"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                    className="pl-10"
+                    onChange={(e) => handleUsernameChange(e.target.value)}
+                    className="pl-10 pr-10"
                     required
                     minLength={3}
                     maxLength={20}
                   />
+                  {usernameStatus === "checking" && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />
+                  )}
+                  {usernameStatus === "available" && (
+                    <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+                  )}
+                  {usernameStatus === "taken" && (
+                    <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-destructive" />
+                  )}
                 </div>
-                {errors.username && <p className="text-sm text-destructive">{errors.username}</p>}
+                {usernameStatus === "available" && (
+                  <p className="text-sm text-green-500 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    Username is available!
+                  </p>
+                )}
+                {usernameStatus === "taken" && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <XCircle className="w-3 h-3" />
+                    This username is taken, please pick another one!
+                  </p>
+                )}
+                {errors.username && usernameStatus !== "taken" && (
+                  <p className="text-sm text-destructive">{errors.username}</p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   3-20 characters, letters, numbers, and underscores only
                 </p>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isLoading || usernameStatus === "taken" || usernameStatus === "checking"}
+              >
                 {isLoading ? <VinylLoader size="sm" /> : "Create Account"}
               </Button>
             </form>
+          )}
+
+          {/* Step: Forgot Password */}
+          {step === "forgot-password" && (
+            <div className="space-y-6 animate-fade-in">
+              <div>
+                <h1 className="font-display text-3xl font-bold mb-2">Reset Password</h1>
+                <p className="text-muted-foreground">
+                  Enter your email and we'll send you a link to reset your password
+                </p>
+              </div>
+
+              {forgotPasswordSent ? (
+                <div className="p-6 rounded-xl bg-green-500/10 border border-green-500/20 text-center">
+                  <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-4" />
+                  <h3 className="font-bold mb-2">Check your inbox!</h3>
+                  <p className="text-sm text-muted-foreground">
+                    We've sent a password reset link to <strong>{forgotPasswordEmail}</strong>
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="forgot-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="forgot-email"
+                        type="email"
+                        placeholder="name@example.com"
+                        value={forgotPasswordEmail}
+                        onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                      <VinylLoader size="sm" />
+                    ) : (
+                      <>
+                        Send Reset Link
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                </form>
+              )}
+            </div>
           )}
         </div>
       </div>

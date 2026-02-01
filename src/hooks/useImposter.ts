@@ -179,10 +179,14 @@ export const useImposter = (): UseImposterReturn => {
     }
   }, [lobby?.round_end_at, lobby?.is_private, lobby?.status, lobby?.host_id, user?.id]);
 
-  // Public lobby countdown
+  // Track when 3+ players were first reached
+  const threePlayersReachedRef = useRef<number | null>(null);
+
+  // Public lobby countdown - starts when 3 players are reached
   useEffect(() => {
     if (!lobby || lobby.is_private || lobby.status !== "waiting") {
       setPublicCountdown(0);
+      threePlayersReachedRef.current = null;
       if (countdownRef.current) {
         clearInterval(countdownRef.current);
         countdownRef.current = null;
@@ -191,8 +195,12 @@ export const useImposter = (): UseImposterReturn => {
     }
 
     if (players.length >= 3) {
-      const lobbyCreatedAt = new Date(lobby.created_at).getTime();
-      const countdownEnd = lobbyCreatedAt + 120 * 1000;
+      // Set the time when 3 players were first reached
+      if (threePlayersReachedRef.current === null) {
+        threePlayersReachedRef.current = Date.now();
+      }
+      
+      const countdownEnd = threePlayersReachedRef.current + 120 * 1000;
 
       const updateCountdown = () => {
         const now = Date.now();
@@ -218,8 +226,9 @@ export const useImposter = (): UseImposterReturn => {
       };
     } else {
       setPublicCountdown(0);
+      threePlayersReachedRef.current = null;
     }
-  }, [lobby?.id, lobby?.is_private, lobby?.status, lobby?.created_at, lobby?.host_id, players.length, user?.id]);
+  }, [lobby?.id, lobby?.is_private, lobby?.status, lobby?.host_id, players.length, user?.id]);
 
   const autoStartPublicGame = async () => {
     if (!lobby || lobby.is_private || lobby.status !== "waiting") return;
@@ -530,15 +539,27 @@ export const useImposter = (): UseImposterReturn => {
       return;
     }
 
+    // First reset all players to not be imposter
+    await supabase
+      .from("game_players")
+      .update({ is_imposter: false })
+      .eq("lobby_id", lobby.id);
+
     // Pick random imposter
     const imposterIndex = Math.floor(Math.random() * players.length);
     const imposterPlayer = players[imposterIndex];
 
-    // Set imposter
-    await supabase
+    // Set imposter - use the player ID
+    const { error: imposterError } = await supabase
       .from("game_players")
       .update({ is_imposter: true })
       .eq("id", imposterPlayer.id);
+
+    if (imposterError) {
+      console.error("Failed to set imposter:", imposterError);
+      toast.error("Failed to start game");
+      return;
+    }
 
     // Set theme and start
     const theme = themes[Math.floor(Math.random() * themes.length)];

@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ListMusic, Play, User, ArrowLeft, Loader2, Lock, Globe, Music } from "lucide-react";
+import { ListMusic, Play, ArrowLeft, Loader2, Lock, Globe, Music, Share2, Settings } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { GridWaveEffect } from "@/components/GridWaveEffect";
 import { PlaylistSongImage } from "@/components/PlaylistSongImage";
 import { PlaylistThisOrThat } from "@/components/PlaylistThisOrThat";
+import { SharePlaylistDialog } from "@/components/SharePlaylistDialog";
+import { PlaylistSettingsDialog } from "@/components/PlaylistSettingsDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import type { PlaylistSong } from "@/hooks/usePlaylists";
 
 interface PlaylistData {
@@ -17,6 +20,7 @@ interface PlaylistData {
   cover_image: string | null;
   user_id: string;
   created_at: string;
+  updated_at?: string;
 }
 
 interface OwnerProfile {
@@ -28,12 +32,17 @@ interface OwnerProfile {
 const PlaylistView = () => {
   const { playlistId } = useParams<{ playlistId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [playlist, setPlaylist] = useState<PlaylistData | null>(null);
   const [songs, setSongs] = useState<PlaylistSong[]>([]);
   const [owner, setOwner] = useState<OwnerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [playingThisOrThat, setPlayingThisOrThat] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+
+  const isOwner = user?.id === playlist?.user_id;
 
   useEffect(() => {
     if (playlistId) {
@@ -210,6 +219,22 @@ const PlaylistView = () => {
                       Play This or That
                     </Button>
                   )}
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => setShareDialogOpen(true)}
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </Button>
+                  {isOwner && (
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={() => setSettingsDialogOpen(true)}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -265,6 +290,40 @@ const PlaylistView = () => {
           songs={songs}
           playlistName={playlist.name}
           onClose={() => setPlayingThisOrThat(false)}
+        />
+      )}
+
+      {/* Share Dialog */}
+      <SharePlaylistDialog
+        playlistId={playlist.id}
+        playlistName={playlist.name}
+        playlistImage={playlist.cover_image || undefined}
+        playlistOwnerId={playlist.user_id}
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+      />
+
+      {/* Settings Dialog */}
+      {isOwner && (
+        <PlaylistSettingsDialog
+          playlist={{
+            id: playlist.id,
+            name: playlist.name,
+            description: playlist.description,
+            is_public: playlist.is_public,
+            user_id: playlist.user_id,
+            created_at: playlist.created_at,
+            updated_at: playlist.updated_at || playlist.created_at,
+            cover_image: playlist.cover_image,
+          }}
+          open={settingsDialogOpen}
+          onOpenChange={(open) => {
+            setSettingsDialogOpen(open);
+            if (!open && playlistId) {
+              // Refresh playlist data after settings change
+              fetchPlaylistData(playlistId);
+            }
+          }}
         />
       )}
     </div>
