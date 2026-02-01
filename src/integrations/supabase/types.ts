@@ -272,6 +272,7 @@ export type Database = {
           code: string
           created_at: string
           current_round: number
+          game_type: string
           host_id: string
           id: string
           is_private: boolean
@@ -284,6 +285,7 @@ export type Database = {
           code: string
           created_at?: string
           current_round?: number
+          game_type?: string
           host_id: string
           id?: string
           is_private?: boolean
@@ -296,6 +298,7 @@ export type Database = {
           code?: string
           created_at?: string
           current_round?: number
+          game_type?: string
           host_id?: string
           id?: string
           is_private?: boolean
@@ -309,6 +312,7 @@ export type Database = {
       game_players: {
         Row: {
           id: string
+          is_imposter: boolean | null
           is_ready: boolean
           joined_at: string
           lobby_id: string
@@ -318,6 +322,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          is_imposter?: boolean | null
           is_ready?: boolean
           joined_at?: string
           lobby_id: string
@@ -327,6 +332,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          is_imposter?: boolean | null
           is_ready?: boolean
           joined_at?: string
           lobby_id?: string
@@ -340,6 +346,48 @@ export type Database = {
             columns: ["lobby_id"]
             isOneToOne: false
             referencedRelation: "game_lobbies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_session_ratings: {
+        Row: {
+          created_at: string
+          game_type: string
+          id: string
+          lobby_id: string
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          game_type?: string
+          id?: string
+          lobby_id: string
+          rating: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          game_type?: string
+          id?: string
+          lobby_id?: string
+          rating?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_session_ratings_lobby_id_fkey"
+            columns: ["lobby_id"]
+            isOneToOne: false
+            referencedRelation: "game_lobbies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_session_ratings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -752,6 +800,8 @@ export type Database = {
           created_at: string | null
           game_wins: number | null
           id: string
+          imposter_catches: number | null
+          imposter_wins: number | null
           is_private: boolean | null
           username: string
         }
@@ -761,6 +811,8 @@ export type Database = {
           created_at?: string | null
           game_wins?: number | null
           id: string
+          imposter_catches?: number | null
+          imposter_wins?: number | null
           is_private?: boolean | null
           username: string
         }
@@ -770,6 +822,8 @@ export type Database = {
           created_at?: string | null
           game_wins?: number | null
           id?: string
+          imposter_catches?: number | null
+          imposter_wins?: number | null
           is_private?: boolean | null
           username?: string
         }

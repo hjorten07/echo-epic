@@ -45,36 +45,44 @@ export const GridWaveEffect = memo(({ className = "" }: GridWaveEffectProps) => 
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
 
-    // Grid settings
-    const gridSize = 40;
-    const waveSpeed = 150; // pixels per second
-    const waveDuration = 1000; // ms
-    const waveInterval = 100; // ms between waves
+    // Grid settings - optimized for performance
+    const gridSize = 50; // Larger grid = fewer points to render
+    const waveSpeed = 120; // Slightly slower for smoother animation
+    const waveDuration = 800; // Shorter duration = fewer active waves
+    const waveInterval = 150; // Less frequent waves
+
+    let lastMoveTime = 0;
+    const throttleMs = 32; // ~30fps for mouse tracking
 
     const handleMouseMove = (e: MouseEvent) => {
+      const now = Date.now();
+      
+      // Throttle mouse move processing
+      if (now - lastMoveTime < throttleMs) return;
+      lastMoveTime = now;
+      
       const rect = canvas.getBoundingClientRect();
       mouseRef.current.x = e.clientX - rect.left;
       mouseRef.current.y = e.clientY - rect.top;
 
       // Create new wave if enough time passed
-      const now = Date.now();
       if (now - lastWaveTimeRef.current > waveInterval && checkTheme()) {
         // Calculate distance moved
         const dx = mouseRef.current.x - mouseRef.current.lastX;
         const dy = mouseRef.current.y - mouseRef.current.lastY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
-        if (distance > 10) {
+        if (distance > 15) { // Require more movement
           wavesRef.current.push({
             x: mouseRef.current.x,
             y: mouseRef.current.y,
             radius: 0,
-            opacity: 0.5,
+            opacity: 0.4, // Slightly lower opacity
             startTime: now,
           });
           
-          // Limit waves array size
-          if (wavesRef.current.length > 15) {
+          // Limit waves array size - fewer concurrent waves
+          if (wavesRef.current.length > 8) {
             wavesRef.current.shift();
           }
           
@@ -87,17 +95,28 @@ export const GridWaveEffect = memo(({ className = "" }: GridWaveEffectProps) => 
 
     document.addEventListener("mousemove", handleMouseMove);
 
-    const animate = () => {
+    let animationFrameId: number;
+    let lastFrameTime = 0;
+    const targetFps = 30; // Cap at 30fps for performance
+    const frameInterval = 1000 / targetFps;
+
+    const animate = (currentTime: number) => {
       if (!ctx || !canvas) return;
       
-      // Clear canvas first
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+      // Throttle frame rate
+      const elapsed = currentTime - lastFrameTime;
+      if (elapsed < frameInterval) {
+        animationFrameId = requestAnimationFrame(animate);
+        return;
+      }
+      lastFrameTime = currentTime - (elapsed % frameInterval);
+      
+      // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const now = Date.now();
 
-      // Get primary color from CSS
+      // Get primary color from CSS (cache this)
       const computedStyle = getComputedStyle(document.documentElement);
       const primaryHsl = computedStyle.getPropertyValue("--primary").trim();
       const hslParts = primaryHsl.split(/\s+/);
@@ -123,7 +142,7 @@ export const GridWaveEffect = memo(({ className = "" }: GridWaveEffectProps) => 
             const distFromCenter = Math.sqrt(dx * dx + dy * dy);
             
             // Wave ring effect
-            const ringWidth = 30;
+            const ringWidth = 25;
             const distFromRing = Math.abs(distFromCenter - currentRadius);
             
             if (distFromRing < ringWidth) {
@@ -134,26 +153,26 @@ export const GridWaveEffect = memo(({ className = "" }: GridWaveEffectProps) => 
           }
 
           // Draw grid point with influence
-          const baseOpacity = 0.08;
-          const opacity = Math.min(0.6, baseOpacity + totalInfluence * 0.5);
-          const size = 2 + totalInfluence * 3;
+          const baseOpacity = 0.06;
+          const opacity = Math.min(0.5, baseOpacity + totalInfluence * 0.4);
+          const size = 1.5 + totalInfluence * 2.5;
           
           ctx.fillStyle = `hsla(${h}, ${s}, ${l}, ${opacity})`;
           ctx.beginPath();
           ctx.arc(x, y, size, 0, Math.PI * 2);
           ctx.fill();
           
-          // Add glow for active points
-          if (totalInfluence > 0.1) {
-            ctx.shadowColor = `hsla(${h}, ${s}, ${l}, ${totalInfluence * 0.4})`;
-            ctx.shadowBlur = totalInfluence * 10;
+          // Add glow for active points (simplified)
+          if (totalInfluence > 0.15) {
+            ctx.shadowColor = `hsla(${h}, ${s}, ${l}, ${totalInfluence * 0.3})`;
+            ctx.shadowBlur = totalInfluence * 8;
             ctx.fill();
             ctx.shadowBlur = 0;
           }
         }
       }
 
-      // Draw wave rings
+      // Draw wave rings (simplified)
       ctx.globalCompositeOperation = "source-over";
       for (const wave of wavesRef.current) {
         const age = now - wave.startTime;
@@ -162,8 +181,8 @@ export const GridWaveEffect = memo(({ className = "" }: GridWaveEffectProps) => 
         const currentRadius = (age / 1000) * waveSpeed;
         const timeFade = 1 - (age / waveDuration);
         
-        ctx.strokeStyle = `hsla(${h}, ${s}, ${l}, ${timeFade * 0.3})`;
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = `hsla(${h}, ${s}, ${l}, ${timeFade * 0.2})`;
+        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.arc(wave.x, wave.y, currentRadius, 0, Math.PI * 2);
         ctx.stroke();
@@ -174,16 +193,16 @@ export const GridWaveEffect = memo(({ className = "" }: GridWaveEffectProps) => 
         wave => now - wave.startTime < waveDuration
       );
 
-      animationRef.current = requestAnimationFrame(animate);
+      animationFrameId = requestAnimationFrame(animate);
     };
 
-    animate();
+    animationFrameId = requestAnimationFrame(animate);
 
     return () => {
       window.removeEventListener("resize", resizeCanvas);
       document.removeEventListener("mousemove", handleMouseMove);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
       }
     };
   }, []);

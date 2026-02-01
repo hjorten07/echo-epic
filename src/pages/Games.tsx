@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Gamepad2, Shuffle, ArrowUpDown, Zap } from "lucide-react";
+import { Gamepad2, Shuffle, ArrowUpDown, Zap, UserX } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ThisOrThat } from "@/components/ThisOrThat";
 import { HigherLowerGame } from "@/components/HigherLowerGame";
 import { SongRushGame } from "@/components/SongRush/SongRushGame";
+import { ImposterGame } from "@/components/Imposter/ImposterGame";
 import { GridWaveEffect } from "@/components/GridWaveEffect";
 import { cn } from "@/lib/utils";
 
-type GameType = "this-or-that" | "higher-lower" | "song-rush";
+type GameType = "this-or-that" | "higher-lower" | "song-rush" | "imposter";
 
 const Games = () => {
   const [selectedGame, setSelectedGame] = useState<GameType>("this-or-that");
@@ -30,6 +31,12 @@ const Games = () => {
       name: "Song Rush",
       description: "Multiplayer: find songs for themes",
       icon: Zap,
+    },
+    {
+      id: "imposter" as const,
+      name: "Imposter",
+      description: "Find who doesn't know the theme",
+      icon: UserX,
     },
   ];
 
@@ -93,6 +100,7 @@ const Games = () => {
             {selectedGame === "this-or-that" && <ThisOrThat />}
             {selectedGame === "higher-lower" && <HigherLowerGame />}
             {selectedGame === "song-rush" && <SongRushGame />}
+            {selectedGame === "imposter" && <ImposterGame />}
           </div>
         </div>
       </main>
