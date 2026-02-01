@@ -64,7 +64,7 @@ const Auth = () => {
     }
   }, [user, navigate]);
 
-  // Check username availability with debounce
+  // Check username availability with debounce using RPC function
   const checkUsernameAvailability = useCallback(async (usernameToCheck: string) => {
     if (usernameToCheck.length < 3) {
       setUsernameStatus("idle");
@@ -73,16 +73,20 @@ const Auth = () => {
 
     setUsernameStatus("checking");
     
-    const { data } = await supabase
-      .from("profiles")
-      .select("username")
-      .eq("username", usernameToCheck)
-      .maybeSingle();
+    const { data, error } = await supabase.rpc("is_username_available", {
+      check_username: usernameToCheck,
+    });
 
-    if (data) {
-      setUsernameStatus("taken");
-    } else {
+    if (error) {
+      console.error("Error checking username:", error);
+      setUsernameStatus("idle");
+      return;
+    }
+
+    if (data === true) {
       setUsernameStatus("available");
+    } else {
+      setUsernameStatus("taken");
     }
   }, []);
 
