@@ -7,7 +7,7 @@ import { batchGetRecordingPopularity, sortByPopularity } from "./listenbrainz";
 
 const BASE_URL = "https://musicbrainz.org/ws/2";
 const COVER_ART_URL = "https://coverartarchive.org";
-const USER_AGENT = "RateTheMusic/1.0.0 (https://ratethemusic.app)";
+const USER_AGENT = "Remelic/1.0.0 (https://remelic.app)";
 
 // Rate limiting: MusicBrainz requires 1 request per second
 let lastRequestTime = 0;

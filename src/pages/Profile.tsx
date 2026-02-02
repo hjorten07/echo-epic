@@ -287,29 +287,29 @@ const Profile = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="pt-24 pb-20">
+      <main className="pt-20 sm:pt-24 pb-20">
         <div className="container mx-auto px-4 max-w-4xl">
-          <div className="glass-card rounded-2xl p-8">
+          <div className="glass-card rounded-2xl p-4 sm:p-8">
             {/* Header */}
-            <div className="flex items-start gap-6 mb-8">
-              <div className="w-24 h-24 rounded-full ring-4 ring-primary/30 bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 mb-6 sm:mb-8">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full ring-4 ring-primary/30 bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center overflow-hidden flex-shrink-0">
                 {profileData.avatar_url ? (
                   <img src={profileData.avatar_url} alt={profileData.username} className="w-full h-full rounded-full object-cover" />
                 ) : (
-                  <span className="text-3xl font-display font-bold text-primary-foreground">
+                  <span className="text-2xl sm:text-3xl font-display font-bold text-primary-foreground">
                     {profileData.username[0]?.toUpperCase()}
                   </span>
                 )}
               </div>
               
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h1 className="font-display text-2xl font-bold">{profileData.username}</h1>
+              <div className="flex-1 text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                  <h1 className="font-display text-xl sm:text-2xl font-bold">{profileData.username}</h1>
                   {profileData.is_private && (
                     <Lock className="w-4 h-4 text-muted-foreground" />
                   )}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                <div className="flex items-center justify-center sm:justify-start gap-2 text-sm text-muted-foreground mt-1">
                   <Calendar className="w-4 h-4" />
                   <span>Joined {format(new Date(profileData.created_at), "MMMM yyyy")}</span>
                 </div>
@@ -363,7 +363,7 @@ const Profile = () => {
                 )}
 
                 {/* Follow button & counts */}
-                <div className="flex items-center gap-4 mt-4">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 mt-4">
                   <button
                     onClick={() => setFollowersModalOpen(true)}
                     className="flex items-center gap-1 text-sm hover:text-primary transition-colors"

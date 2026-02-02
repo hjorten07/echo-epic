@@ -115,8 +115,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await supabase.from("notifications").insert({
         user_id: data.user.id,
         type: "welcome",
-        title: "Welcome to RateTheMusic! 🎵",
-        message: "We're thrilled to have you join our community of music lovers! RateTheMusic is your personal space to rate your favorite artists, albums, and songs, discover new music through community ratings, and connect with others who share your taste. Start by exploring the Top 100, rating some music, or finding friends on the Social tab. Happy rating!",
+        title: "Welcome to Remelic! 🎵",
+        message: "We're thrilled to have you join our community of music lovers! Remelic is your personal space to rate your favorite artists, albums, and songs, discover new music through community ratings, and connect with others who share your taste. Start by exploring the Top 100, rating some music, or finding friends on the Social tab. Happy rating!",
       });
 
       await fetchProfile(data.user.id);

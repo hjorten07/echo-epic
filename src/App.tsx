@@ -38,7 +38,7 @@ const createQueryClient = () => new QueryClient({
 // Apply saved theme on load
 const ThemeInitializer = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
-    const savedTheme = localStorage.getItem("ratethemusic-theme");
+    const savedTheme = localStorage.getItem("remelic-theme") || localStorage.getItem("ratethemusic-theme");
     if (savedTheme && savedTheme !== "default") {
       document.documentElement.classList.add(`theme-${savedTheme}`);
     }

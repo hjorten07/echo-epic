@@ -1215,6 +1215,10 @@ export type Database = {
         Args: { check_username: string }
         Returns: boolean
       }
+      set_game_imposter: {
+        Args: { p_imposter_player_id: string; p_lobby_id: string }
+        Returns: boolean
+      }
       validate_message: { Args: { message_text: string }; Returns: boolean }
     }
     Enums: {

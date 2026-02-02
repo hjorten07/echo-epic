@@ -194,7 +194,7 @@ const Auth = () => {
     if (error) {
       toast.error(error.message || "Failed to create account");
     } else {
-      toast.success("Account created! Welcome to RateTheMusic!");
+      toast.success("Account created! Welcome to Remelic!");
       navigate("/");
     }
   };
@@ -324,7 +324,7 @@ const Auth = () => {
             <form onSubmit={handleUsernameSubmit} className="space-y-6 animate-fade-in">
               <div>
                 <h1 className="font-display text-3xl font-bold mb-2">Choose your username</h1>
-                <p className="text-muted-foreground">This is how others will see you on RateTheMusic</p>
+                <p className="text-muted-foreground">This is how others will see you on Remelic</p>
               </div>
 
               <div className="space-y-2">

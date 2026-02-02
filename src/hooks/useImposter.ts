@@ -238,11 +238,28 @@ export const useImposter = (): UseImposterReturn => {
 
   const autoAdvanceToVoting = async () => {
     if (!lobby) return;
-    const roundEnd = new Date(Date.now() + 60 * 1000).toISOString();
-    await supabase
-      .from("game_lobbies")
-      .update({ status: "voting", round_end_at: roundEnd })
-      .eq("id", lobby.id);
+    
+    // Check if we need another round (max 2 rounds)
+    if (lobby.current_round < lobby.max_rounds) {
+      // Move to next round with new theme
+      const newTheme = themes[Math.floor(Math.random() * themes.length)];
+      const roundEnd = new Date(Date.now() + 120 * 1000).toISOString();
+      await supabase
+        .from("game_lobbies")
+        .update({ 
+          current_round: lobby.current_round + 1,
+          theme: newTheme,
+          round_end_at: roundEnd 
+        })
+        .eq("id", lobby.id);
+    } else {
+      // All rounds complete, move to voting
+      const roundEnd = new Date(Date.now() + 60 * 1000).toISOString();
+      await supabase
+        .from("game_lobbies")
+        .update({ status: "voting", round_end_at: roundEnd })
+        .eq("id", lobby.id);
+    }
   };
 
   const autoCalculateResults = async () => {
@@ -539,21 +556,15 @@ export const useImposter = (): UseImposterReturn => {
       return;
     }
 
-    // First reset all players to not be imposter
-    await supabase
-      .from("game_players")
-      .update({ is_imposter: false })
-      .eq("lobby_id", lobby.id);
-
     // Pick random imposter
     const imposterIndex = Math.floor(Math.random() * players.length);
     const imposterPlayer = players[imposterIndex];
 
-    // Set imposter - use the player ID
-    const { error: imposterError } = await supabase
-      .from("game_players")
-      .update({ is_imposter: true })
-      .eq("id", imposterPlayer.id);
+    // Use RPC function to set imposter (bypasses RLS)
+    const { error: imposterError } = await supabase.rpc("set_game_imposter", {
+      p_lobby_id: lobby.id,
+      p_imposter_player_id: imposterPlayer.id,
+    });
 
     if (imposterError) {
       console.error("Failed to set imposter:", imposterError);
@@ -561,7 +572,7 @@ export const useImposter = (): UseImposterReturn => {
       return;
     }
 
-    // Set theme and start
+    // Set theme and start - game has 2 rounds
     const theme = themes[Math.floor(Math.random() * themes.length)];
     const roundEnd = new Date(Date.now() + 120 * 1000).toISOString();
 
@@ -570,6 +581,8 @@ export const useImposter = (): UseImposterReturn => {
       .update({
         status: "submitting",
         theme,
+        current_round: 1,
+        max_rounds: 2,
         round_end_at: roundEnd,
       })
       .eq("id", lobby.id);

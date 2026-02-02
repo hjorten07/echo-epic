@@ -14,7 +14,7 @@ export type ColorTheme =
   | "light"
   | "navy-gold";
 
-const THEME_KEY = "ratethemusic-theme";
+const THEME_KEY = "remelic-theme";
 
 const ALL_THEME_CLASSES = [
   "theme-neon-purple",
