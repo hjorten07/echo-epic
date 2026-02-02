@@ -73,27 +73,27 @@ export const ImposterJoin = ({ game }: Props) => {
   }
 
   return (
-    <div className="text-center py-8">
-      <div className="mb-8">
-        <div className="w-20 h-20 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
-          <UserX className="w-10 h-10 text-destructive" />
+    <div className="text-center py-6 sm:py-8 px-4">
+      <div className="mb-6 sm:mb-8">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
+          <UserX className="w-8 h-8 sm:w-10 sm:h-10 text-destructive" />
         </div>
-        <h2 className="font-display text-3xl font-bold mb-2">Imposter</h2>
-        <p className="text-muted-foreground max-w-md mx-auto">
+        <h2 className="font-display text-2xl sm:text-3xl font-bold mb-2">Imposter</h2>
+        <p className="text-sm sm:text-base text-muted-foreground max-w-md mx-auto">
           One player doesn't know the theme. Find the imposter before they blend in, or deceive everyone if you're it!
         </p>
 
         {/* Stats Display */}
-        <div className="mt-4 flex justify-center gap-4">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-destructive/20 text-destructive">
-            <UserX className="w-5 h-5" />
+        <div className="mt-4 flex flex-wrap justify-center gap-2 sm:gap-4">
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-destructive/20 text-destructive text-sm">
+            <UserX className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="font-bold">{imposterWins}</span>
-            <span className="text-sm">Imposter Wins</span>
+            <span className="text-xs sm:text-sm">Wins</span>
           </div>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/20 text-green-600">
-            <Eye className="w-5 h-5" />
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-green-500/20 text-green-600 text-sm">
+            <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="font-bold">{catches}</span>
-            <span className="text-sm">Catches</span>
+            <span className="text-xs sm:text-sm">Catches</span>
           </div>
         </div>
       </div>
@@ -169,8 +169,8 @@ export const ImposterJoin = ({ game }: Props) => {
                 <span className="font-bold text-primary">2</span>
               </div>
               <div>
-                <p className="font-medium">Submit a Song</p>
-                <p className="text-muted-foreground">Everyone picks a song. Normal players match the theme, the Imposter tries to blend in</p>
+                <p className="font-medium">2 Rounds of Song Submissions</p>
+                <p className="text-muted-foreground">Everyone submits songs for 2 different themes. The Imposter tries to blend in without knowing!</p>
               </div>
             </div>
             <div className="flex gap-3">
@@ -179,7 +179,7 @@ export const ImposterJoin = ({ game }: Props) => {
               </div>
               <div>
                 <p className="font-medium">Vote for the Imposter</p>
-                <p className="text-muted-foreground">Look at everyone's songs and vote who you think is the Imposter</p>
+                <p className="text-muted-foreground">Review all songs from both rounds and vote who you think is the Imposter</p>
               </div>
             </div>
             <div className="flex gap-3">

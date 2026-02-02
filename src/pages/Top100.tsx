@@ -42,7 +42,7 @@ const Top100 = () => {
             </div>
             <h1 className="font-display text-4xl font-bold mb-4">Top 100</h1>
             <p className="text-muted-foreground max-w-lg mx-auto">
-              The highest-rated music according to RateTheMusic users. Rankings are weighted by total ratings.
+              The highest-rated music according to Remelic users. Rankings are weighted by total ratings.
             </p>
           </div>
 

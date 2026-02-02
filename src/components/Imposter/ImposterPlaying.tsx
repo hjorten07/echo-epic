@@ -105,11 +105,14 @@ export const ImposterPlaying = ({ game }: Props) => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto px-4">
       {/* Header */}
-      <div className="text-center mb-8">
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-muted-foreground">
+      <div className="text-center mb-6 sm:mb-8">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 mb-4">
+          <div className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-muted text-muted-foreground">
+            <span className="text-sm font-medium">Round {game.lobby?.current_round}/{game.lobby?.max_rounds}</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-muted text-muted-foreground">
             <Clock className="w-4 h-4" />
             <span className="font-mono font-bold">{formatTime(game.timeLeft)}</span>
           </div>
@@ -117,22 +120,22 @@ export const ImposterPlaying = ({ game }: Props) => {
         
         {/* Role indicator */}
         {amImposter ? (
-          <div className="glass-card p-6 rounded-2xl bg-destructive/10 border-destructive/30 mb-6">
-            <div className="flex items-center justify-center gap-3 text-destructive">
-              <UserX className="w-8 h-8" />
-              <span className="font-display text-2xl font-bold">You are the IMPOSTER!</span>
+          <div className="glass-card p-4 sm:p-6 rounded-2xl bg-destructive/10 border-destructive/30 mb-6">
+            <div className="flex items-center justify-center gap-2 sm:gap-3 text-destructive">
+              <UserX className="w-6 h-6 sm:w-8 sm:h-8" />
+              <span className="font-display text-lg sm:text-2xl font-bold">You are the IMPOSTER!</span>
             </div>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-sm sm:text-base text-muted-foreground mt-2">
               You don't know the theme. Pick a song that might blend in!
             </p>
           </div>
         ) : (
-          <div className="glass-card p-6 rounded-2xl bg-green-500/10 border-green-500/30 mb-6">
-            <div className="flex items-center justify-center gap-3 text-green-600">
-              <Eye className="w-8 h-8" />
-              <span className="font-display text-2xl font-bold">Theme: {game.lobby?.theme}</span>
+          <div className="glass-card p-4 sm:p-6 rounded-2xl bg-green-500/10 border-green-500/30 mb-6">
+            <div className="flex items-center justify-center gap-2 sm:gap-3 text-green-600">
+              <Eye className="w-6 h-6 sm:w-8 sm:h-8" />
+              <span className="font-display text-lg sm:text-2xl font-bold">Theme: {game.lobby?.theme}</span>
             </div>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-sm sm:text-base text-muted-foreground mt-2">
               Pick a song that matches. One player doesn't know the theme!
             </p>
           </div>
