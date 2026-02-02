@@ -49,7 +49,7 @@ export const MobileMenu = ({ trigger }: MobileMenuProps) => {
                 <Music2 className="w-4 h-4 text-primary-foreground" />
               </div>
               <span className="font-display font-bold">
-                <span className="text-primary">Relics</span>
+                <span className="text-primary">Remelic</span>
               </span>
             </SheetTitle>
           </SheetHeader>

@@ -15,7 +15,7 @@ export const AboutModal = ({ open, onOpenChange }: AboutModalProps) => {
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
               <Music2 className="w-4 h-4 text-primary-foreground" />
             </div>
-            About RateTheMusic
+            About Remelic
           </DialogTitle>
           <DialogDescription>
             Discover, rate, and share your love for music
@@ -24,7 +24,7 @@ export const AboutModal = ({ open, onOpenChange }: AboutModalProps) => {
 
         <div className="space-y-4 mt-4">
           <p className="text-muted-foreground">
-            RateTheMusic is a community-driven platform where music lovers come together to 
+            Remelic is a community-driven platform where music lovers come together to 
             discover new artists, rate their favorite songs and albums, and connect with 
             fellow enthusiasts who share their taste.
           </p>

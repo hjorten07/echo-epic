@@ -72,7 +72,7 @@ export const SuggestionsModal = ({ open, onOpenChange }: SuggestionsModalProps) 
         <DialogHeader>
           <DialogTitle>Send Feedback</DialogTitle>
           <DialogDescription>
-            Have a suggestion or found a bug? Let us know and help improve Relics!
+            Have a suggestion or found a bug? Let us know and help improve Remelic!
           </DialogDescription>
         </DialogHeader>
 
