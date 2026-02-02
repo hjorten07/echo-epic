@@ -42,7 +42,7 @@ export const ImposterPlaying = ({ game }: Props) => {
     try {
       const response = await fetch(
         `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(searchQuery)}&limit=10&fmt=json`,
-        { headers: { "User-Agent": "Relics/1.0" } }
+        { headers: { "User-Agent": "Remelic/1.0" } }
       );
       const data = await response.json();
       setSearchResults(data.recordings || []);
