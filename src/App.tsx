@@ -35,12 +35,13 @@ const createQueryClient = () => new QueryClient({
   },
 });
 
-// Apply saved theme on load
+// Apply saved theme on load - default to navy-gold
 const ThemeInitializer = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const savedTheme = localStorage.getItem("remelic-theme") || localStorage.getItem("ratethemusic-theme");
-    if (savedTheme && savedTheme !== "default") {
-      document.documentElement.classList.add(`theme-${savedTheme}`);
+    const themeToApply = savedTheme || "navy-gold";
+    if (themeToApply !== "default") {
+      document.documentElement.classList.add(`theme-${themeToApply}`);
     }
   }, []);
   return <>{children}</>;
