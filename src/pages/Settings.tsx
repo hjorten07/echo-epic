@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, Palette, Lock, Bell, User, Eye, EyeOff, Check, Camera, Loader2, Shield, Plus, Minus } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Palette, Lock, Bell, User, Eye, EyeOff, Check, Camera, Loader2, Shield, Plus, Minus, Trash2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -38,7 +38,8 @@ const extraThemes: ThemeOption[] = [
 ];
 
 const AccountSection = () => {
-  const { user, profile, updateProfile } = useAuth();
+  const { user, profile, updateProfile, signOut } = useAuth();
+  const navigate = useNavigate();
   const [username, setUsername] = useState(profile?.username || "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -46,6 +47,9 @@ const AccountSection = () => {
   const [savingUsername, setSavingUsername] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (profile?.username) {
@@ -115,6 +119,66 @@ const AccountSection = () => {
       setShowPasswordForm(false);
     }
     setSavingPassword(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE" || !user) return;
+    
+    setDeleting(true);
+    try {
+      const userId = user.id;
+      
+      // Get playlist IDs for this user
+      const { data: playlists } = await supabase.from("playlists").select("id").eq("user_id", userId);
+      const playlistIds = playlists?.map(p => p.id) || [];
+      
+      // Delete playlist songs first
+      if (playlistIds.length > 0) {
+        await supabase.from("playlist_songs").delete().in("playlist_id", playlistIds);
+      }
+      
+      // Get game player IDs for this user
+      const { data: playerRecords } = await supabase.from("game_players").select("id").eq("user_id", userId);
+      const playerIds = playerRecords?.map(p => p.id) || [];
+      
+      if (playerIds.length > 0) {
+        await supabase.from("game_votes").delete().in("voter_id", playerIds);
+        await supabase.from("game_submissions").delete().in("player_id", playerIds);
+      }
+      await supabase.from("game_players").delete().eq("user_id", userId);
+      await supabase.from("game_chat").delete().eq("user_id", userId);
+      await supabase.from("game_session_ratings").delete().eq("user_id", userId);
+      
+      // Delete playlists
+      await supabase.from("playlists").delete().eq("user_id", userId);
+      
+      // Delete social content
+      await supabase.from("wall_post_replies").delete().eq("user_id", userId);
+      await supabase.from("wall_posts").delete().eq("user_id", userId);
+      await supabase.from("hot_take_replies").delete().eq("user_id", userId);
+      await supabase.from("hot_takes").delete().eq("user_id", userId);
+      await supabase.from("votes").delete().eq("user_id", userId);
+      await supabase.from("comments").delete().eq("user_id", userId);
+      await supabase.from("messages").delete().or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+      await supabase.from("notifications").delete().eq("user_id", userId);
+      await supabase.from("ratings").delete().eq("user_id", userId);
+      await supabase.from("user_badges").delete().eq("user_id", userId);
+      await supabase.from("user_streaks").delete().eq("user_id", userId);
+      await supabase.from("follow_requests").delete().or(`requester_id.eq.${userId},target_id.eq.${userId}`);
+      await supabase.from("follows").delete().or(`follower_id.eq.${userId},following_id.eq.${userId}`);
+      await supabase.from("reports").delete().eq("reporter_id", userId);
+      await supabase.from("suggestions").delete().eq("user_id", userId);
+      await supabase.from("profiles").delete().eq("id", userId);
+      
+      await signOut();
+      toast.success("Your account and all data have been deleted");
+      navigate("/");
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      toast.error("Failed to delete account. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -210,6 +274,75 @@ const AccountSection = () => {
         <div className="p-4 rounded-xl bg-secondary/50">
           <Label className="font-medium">Email</Label>
           <p className="text-sm text-muted-foreground mt-1">{user?.email}</p>
+        </div>
+
+        {/* Delete Account */}
+        <div className="pt-4 border-t border-border">
+          {!showDeleteConfirm ? (
+            <Button 
+              variant="destructive" 
+              className="w-full"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Account
+            </Button>
+          ) : (
+            <div className="space-y-4 p-4 rounded-xl bg-destructive/10 border border-destructive/30">
+              <div className="flex items-start gap-3">
+                <Trash2 className="w-5 h-5 text-destructive mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-destructive">Delete Your Account</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    This action is permanent and cannot be undone. All your data including ratings, 
+                    playlists, comments, messages, and profile will be permanently deleted.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="delete-confirm" className="text-sm">
+                  Type <span className="font-mono font-bold text-destructive">DELETE</span> to confirm
+                </Label>
+                <Input
+                  id="delete-confirm"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Type DELETE"
+                  className="border-destructive/50 focus:border-destructive"
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteConfirmText("");
+                  }}
+                  disabled={deleting}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  className="flex-1"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirmText !== "DELETE" || deleting}
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete Forever"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </section>
