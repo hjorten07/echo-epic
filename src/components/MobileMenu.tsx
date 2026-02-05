@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, TrendingUp, Users, Gamepad2, Info, MessageSquare, Instagram, Twitter, Music2, X, Sparkles, ListMusic } from "lucide-react";
+import { Home, TrendingUp, Users, Gamepad2, Info, MessageSquare, Instagram, Twitter, Music2, X, Sparkles, ListMusic, Cookie } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
@@ -103,6 +103,14 @@ export const MobileMenu = ({ trigger }: MobileMenuProps) => {
                   <span className="font-medium">Send Feedback</span>
                 </button>
               )}
+              <Link
+                to="/cookie-policy"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-foreground hover:bg-secondary w-full text-left"
+              >
+                <Cookie className="w-5 h-5" />
+                <span className="font-medium">Cookie Policy</span>
+              </Link>
             </div>
 
             <Separator className="my-4" />
