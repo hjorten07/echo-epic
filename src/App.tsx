@@ -24,6 +24,7 @@ import Playlists from "./pages/Playlists";
 import PlaylistView from "./pages/PlaylistView";
 import Notifications from "./pages/Notifications";
 import CookiePolicy from "./pages/CookiePolicy";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 
 // Create QueryClient inside component to avoid HMR issues
@@ -80,6 +81,7 @@ const App = () => {
                 <Route path="/messages" element={<Conversations />} />
                 <Route path="/messages/:partnerId" element={<Messages />} />
                 <Route path="/cookie-policy" element={<CookiePolicy />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
