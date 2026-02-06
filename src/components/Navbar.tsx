@@ -15,6 +15,7 @@ import { NotificationDropdown } from "./NotificationDropdown";
 import { MessagesDropdown } from "./MessagesDropdown";
 import { MobileMenu } from "./MobileMenu";
 import { cn } from "@/lib/utils";
+import { ScrollProgressBar } from "./ScrollProgressBar";
 
 export const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -186,6 +187,7 @@ export const Navbar = () => {
         </div>
 
       </div>
+      <ScrollProgressBar />
     </nav>
   );
 };

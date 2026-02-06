@@ -22,14 +22,9 @@ export async function getWikipediaData(artistName: string): Promise<WikipediaDat
   }
   
   try {
-    // First, search for the artist page with disambiguation
-    // Use multiple search strategies to find the right artist
+    // Search for the artist with a focused query first - avoid multiple sequential calls
     const searchQueries = [
       `${artistName} musician`,
-      `${artistName} singer`,
-      `${artistName} DJ`,
-      `${artistName} band`,
-      `${artistName} artist`,
       artistName,
     ];
     
@@ -48,28 +43,18 @@ export async function getWikipediaData(artistName: string): Promise<WikipediaDat
         const title = result.title.toLowerCase();
         const name = artistName.toLowerCase();
         
-        // Score based on how well the title matches the artist name
         let score = 0;
         
-        // Exact match or starts with artist name gets highest score
         if (title === name || title.startsWith(name + " ")) {
           score = 100;
         } else if (title.includes(name)) {
           score = 50;
         }
         
-        // Boost score if it contains music-related terms
-        if (result.snippet?.toLowerCase().includes("musician") ||
-            result.snippet?.toLowerCase().includes("singer") ||
-            result.snippet?.toLowerCase().includes("rapper") ||
-            result.snippet?.toLowerCase().includes("dj") ||
-            result.snippet?.toLowerCase().includes("producer") ||
-            result.snippet?.toLowerCase().includes("band") ||
-            result.snippet?.toLowerCase().includes("songwriter")) {
+        if (result.snippet?.toLowerCase().match(/musician|singer|rapper|dj|producer|band|songwriter/)) {
           score += 30;
         }
         
-        // Penalize disambiguation pages
         if (title.includes("(disambiguation)")) {
           score -= 100;
         }
@@ -79,7 +64,7 @@ export async function getWikipediaData(artistName: string): Promise<WikipediaDat
         }
       }
       
-      // If we found a good match (score >= 80), stop searching
+      // If we found a good match, stop searching immediately
       if (bestResult && bestResult.score >= 80) {
         break;
       }
