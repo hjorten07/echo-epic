@@ -1,7 +1,7 @@
 import { useState, useEffect, memo, useRef } from "react";
 import { getCoverArt, getRecording } from "@/lib/musicbrainz";
 import { coverArtCache, recordingReleaseCache } from "@/lib/coverArtCache";
-import { cn } from "@/lib/utils";
+import { cn, normalizeImageUrl } from "@/lib/utils";
 
 interface RatingItemImageProps {
   itemId: string;
@@ -25,13 +25,27 @@ export const RatingItemImage = memo(({
   itemName,
   className = "w-10 h-10",
 }: RatingItemImageProps) => {
-  const [coverUrl, setCoverUrl] = useState<string | null>(itemImage);
+  const normalizedImage = normalizeImageUrl(itemImage) || null;
+  const [coverUrl, setCoverUrl] = useState<string | null>(normalizedImage);
   const [loading, setLoading] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Intersection observer for lazy loading
+  // Intersection observer for lazy loading with immediate viewport check
   useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    // Immediately check if already in viewport
+    const rect = element.getBoundingClientRect();
+    if (
+      rect.top < window.innerHeight + 100 &&
+      rect.bottom > -100
+    ) {
+      setIsInView(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -39,13 +53,10 @@ export const RatingItemImage = memo(({
           observer.disconnect();
         }
       },
-      { rootMargin: "50px" }
+      { rootMargin: "200px" }
     );
 
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
-
+    observer.observe(element);
     return () => observer.disconnect();
   }, []);
 
@@ -54,8 +65,8 @@ export const RatingItemImage = memo(({
     let isMounted = true;
 
     // If we already have an image or it's not a song, use existing
-    if (itemImage || itemType !== "song") {
-      setCoverUrl(itemImage);
+    if (normalizedImage || itemType !== "song") {
+      setCoverUrl(normalizedImage);
       return;
     }
 
@@ -139,7 +150,7 @@ export const RatingItemImage = memo(({
     return () => {
       isMounted = false;
     };
-  }, [itemId, itemType, itemImage, isInView]);
+  }, [itemId, itemType, normalizedImage, isInView]);
 
   return (
     <div 
@@ -153,8 +164,8 @@ export const RatingItemImage = memo(({
         <div className="w-full h-full bg-muted animate-pulse" />
       ) : coverUrl ? (
         <img 
-          src={coverUrl} 
-          alt={itemName} 
+          src={normalizeImageUrl(coverUrl) || coverUrl} 
+          alt={itemName}
           className="w-full h-full object-cover"
           loading="lazy"
           decoding="async"
