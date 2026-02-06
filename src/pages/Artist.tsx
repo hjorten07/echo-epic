@@ -5,6 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { VinylLoader } from "@/components/VinylLoader";
 import { ItemRatingSection } from "@/components/ItemRatingSection";
 import { CommentSection } from "@/components/CommentSection";
+import { LazyImage } from "@/components/LazyImage";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -170,14 +171,28 @@ const Artist = () => {
       setAlbums(sorted);
       setLoadingAlbums(false);
 
-      // Load cover art in the background
-      for (const album of sorted) {
-        const cover = await getCoverArt(album.id);
-        if (cover) {
-          setAlbums(prev =>
-            prev.map(a => (a.id === album.id ? { ...a, coverUrl: cover } : a))
-          );
-        }
+      // Load cover art in parallel batches of 6 for faster loading
+      const BATCH_SIZE = 6;
+      for (let i = 0; i < sorted.length; i += BATCH_SIZE) {
+        const batch = sorted.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map(async (album) => {
+            const cover = await getCoverArt(album.id);
+            return { id: album.id, cover };
+          })
+        );
+        
+        setAlbums(prev =>
+          prev.map(a => {
+            const result = results.find(
+              r => r.status === "fulfilled" && r.value.id === a.id && r.value.cover
+            );
+            if (result?.status === "fulfilled" && result.value.cover) {
+              return { ...a, coverUrl: result.value.cover };
+            }
+            return a;
+          })
+        );
       }
     };
 
@@ -541,11 +556,10 @@ const Artist = () => {
                   >
                     <div className="aspect-square bg-secondary overflow-hidden">
                       {album.coverUrl ? (
-                        <img
+                        <LazyImage
                           src={album.coverUrl}
                           alt={album.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          loading="lazy"
+                          className="w-full h-full transition-transform duration-500 group-hover:scale-110"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
