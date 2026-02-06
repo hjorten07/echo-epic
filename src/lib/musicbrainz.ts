@@ -141,7 +141,7 @@ async function batchFetchCoverArt(ids: string[]): Promise<Map<string, string | n
         const data = await response.json();
         const front = data.images?.find((img: { front?: boolean }) => img.front);
         const url = front?.thumbnails?.small || front?.thumbnails?.["250"] || front?.image || data.images?.[0]?.thumbnails?.small || null;
-        return { id, url };
+        return { id, url: url ? url.replace("http://", "https://") : null };
       } catch {
         return { id, url: null };
       }
@@ -389,7 +389,7 @@ export async function getCoverArt(releaseGroupId: string, releaseId?: string): P
       const data = await response.json();
       const front = data.images?.find((img: { front?: boolean }) => img.front);
       const url = front?.thumbnails?.small || front?.image || data.images?.[0]?.thumbnails?.small || null;
-      if (url) return url;
+      if (url) return url.replace("http://", "https://");
     }
     
     // Fallback: try release directly if release-group has no art
@@ -402,7 +402,8 @@ export async function getCoverArt(releaseGroupId: string, releaseId?: string): P
       if (releaseResponse.ok) {
         const releaseData = await releaseResponse.json();
         const front = releaseData.images?.find((img: { front?: boolean }) => img.front);
-        return front?.thumbnails?.small || front?.image || releaseData.images?.[0]?.thumbnails?.small || null;
+        const url = front?.thumbnails?.small || front?.image || releaseData.images?.[0]?.thumbnails?.small || null;
+        return url ? url.replace("http://", "https://") : null;
       }
     }
     

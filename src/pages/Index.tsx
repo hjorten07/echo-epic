@@ -47,7 +47,7 @@ const Index = () => {
         id: item.item_id,
         name: item.item_name,
         type: item.item_type as "song" | "album" | "artist",
-        imageUrl: item.item_image || undefined,
+        imageUrl: item.item_image?.replace("http://", "https://") || undefined,
         subtitle: item.item_subtitle || undefined,
       }));
     },
@@ -90,10 +90,11 @@ const Index = () => {
                   </div>
                 ) : discoverMusic && discoverMusic.length > 0 ? (
                   <div className="grid sm:grid-cols-2 gap-4">
-                    {discoverMusic.map((item) => (
+                    {discoverMusic.map((item, index) => (
                       <MusicCard
                         key={`${item.type}-${item.id}`}
                         {...item}
+                        priority={index < 2}
                       />
                     ))}
                   </div>
@@ -127,6 +128,7 @@ const Index = () => {
                               src={rating.item_image}
                               alt={rating.item_name}
                               className="w-full h-full"
+                              priority
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">

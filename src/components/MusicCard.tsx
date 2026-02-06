@@ -13,6 +13,8 @@ interface MusicCardProps {
   totalRatings?: number;
   subtitle?: string;
   className?: string;
+  /** Mark as priority to eagerly load images */
+  priority?: boolean;
 }
 
 /**
@@ -30,6 +32,7 @@ export const MusicCard = memo(forwardRef<HTMLAnchorElement, MusicCardProps>(({
   totalRatings,
   subtitle,
   className,
+  priority,
 }, ref) => {
   const linkPath = `/${type}/${id}`;
 
@@ -47,15 +50,16 @@ export const MusicCard = memo(forwardRef<HTMLAnchorElement, MusicCardProps>(({
       <div className="relative aspect-square overflow-hidden">
         {imageUrl ? (
           <LazyImage
-            src={imageUrl}
-            alt={name}
-            className="w-full h-full"
-            fallback={
-              <span className="text-4xl font-display font-bold text-muted-foreground/30">
-                {name[0]?.toUpperCase()}
-              </span>
-            }
-          />
+              src={imageUrl}
+              alt={name}
+              className="w-full h-full"
+              priority={priority}
+              fallback={
+                <span className="text-4xl font-display font-bold text-muted-foreground/30">
+                  {name[0]?.toUpperCase()}
+                </span>
+              }
+            />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-secondary to-muted flex items-center justify-center">
             <span className="text-4xl font-display font-bold text-muted-foreground/30">

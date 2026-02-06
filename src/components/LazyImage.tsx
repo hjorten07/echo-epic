@@ -1,26 +1,49 @@
 import { useState, useRef, useEffect, forwardRef, memo } from "react";
-import { cn } from "@/lib/utils";
+import { cn, normalizeImageUrl } from "@/lib/utils";
 
 interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fallback?: React.ReactNode;
   placeholderClassName?: string;
+  /** Skip lazy loading — use for above-the-fold images */
+  priority?: boolean;
 }
 
 /**
  * Optimized lazy loading image component with:
  * - Intersection Observer for viewport-based loading
+ * - Immediate viewport check on mount (fixes first-image-not-loading)
+ * - Priority prop to skip lazy loading for above-the-fold content
+ * - HTTPS normalization for mixed-content prevention
  * - Fade-in animation on load
  * - Built-in error fallback
  * - Memoized to prevent unnecessary re-renders
  */
 export const LazyImage = memo(forwardRef<HTMLImageElement, LazyImageProps>(
-  ({ src, alt, className, fallback, placeholderClassName, ...props }, ref) => {
+  ({ src, alt, className, fallback, placeholderClassName, priority, ...props }, ref) => {
+    const normalizedSrc = normalizeImageUrl(src) || src;
     const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
-    const [isInView, setIsInView] = useState(false);
-    const imgRef = useRef<HTMLImageElement>(null);
+    const [isInView, setIsInView] = useState(!!priority);
+    const imgRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+      if (priority) return; // Skip observer for priority images
+
+      const element = imgRef.current;
+      if (!element) return;
+
+      // Immediately check if already in viewport
+      const rect = element.getBoundingClientRect();
+      if (
+        rect.top < window.innerHeight + 100 &&
+        rect.bottom > -100 &&
+        rect.left < window.innerWidth + 100 &&
+        rect.right > -100
+      ) {
+        setIsInView(true);
+        return;
+      }
+
       const observer = new IntersectionObserver(
         ([entry]) => {
           if (entry.isIntersecting) {
@@ -28,27 +51,23 @@ export const LazyImage = memo(forwardRef<HTMLImageElement, LazyImageProps>(
             observer.disconnect();
           }
         },
-        { rootMargin: "100px" } // Start loading 100px before entering viewport
+        { rootMargin: "200px" }
       );
 
-      const element = imgRef.current;
-      if (element) {
-        observer.observe(element);
-      }
-
+      observer.observe(element);
       return () => observer.disconnect();
-    }, []);
+    }, [priority]);
 
     // Reset state when src changes
     useEffect(() => {
       setIsLoaded(false);
       setHasError(false);
-    }, [src]);
+    }, [normalizedSrc]);
 
-    if (!src || hasError) {
+    if (!normalizedSrc || hasError) {
       return (
         <div 
-          ref={imgRef as any}
+          ref={imgRef}
           className={cn(
             "flex items-center justify-center bg-secondary",
             placeholderClassName || className
@@ -79,9 +98,9 @@ export const LazyImage = memo(forwardRef<HTMLImageElement, LazyImageProps>(
         {isInView && (
           <img
             ref={ref}
-            src={src}
+            src={normalizedSrc}
             alt={alt || ""}
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
             decoding="async"
             onLoad={() => setIsLoaded(true)}
             onError={() => setHasError(true)}
