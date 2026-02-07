@@ -1,19 +1,20 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { HeroSection } from "@/components/HeroSection";
-import { ThisOrThat } from "@/components/ThisOrThat";
-import { HigherLowerGame } from "@/components/HigherLowerGame";
-import { MusicCard } from "@/components/MusicCard";
+import { FeatureCards } from "@/components/FeatureCards";
+import { StatsBar } from "@/components/StatsBar";
 import { StarRating } from "@/components/StarRating";
-import { SoundWaveAnimation } from "@/components/SoundWaveAnimation";
-import { GridWaveEffect } from "@/components/GridWaveEffect";
 import { LazyImage } from "@/components/LazyImage";
 import { Loader2 } from "lucide-react";
 import { useRecentRatings } from "@/hooks/useRatings";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { MusicCard } from "@/components/MusicCard";
+
+const ThisOrThat = lazy(() => import("@/components/ThisOrThat").then(m => ({ default: m.ThisOrThat })));
+const HigherLowerGame = lazy(() => import("@/components/HigherLowerGame").then(m => ({ default: m.HigherLowerGame })));
 
 const games = ["thisOrThat", "higherLower"] as const;
 
@@ -22,7 +23,6 @@ const Index = () => {
   
   const { data: recentRatings, isLoading: recentLoading } = useRecentRatings(8);
 
-  // Fetch recently rated music with high ratings (8+)
   const { data: discoverMusic, isLoading: discoverLoading } = useQuery({
     queryKey: ["discover-music-highly-rated"],
     queryFn: async () => {
@@ -35,7 +35,6 @@ const Index = () => {
       
       if (!highlyRated || highlyRated.length === 0) return [];
       
-      // Deduplicate by item_id and take first 4
       const seen = new Set<string>();
       const unique = highlyRated.filter(item => {
         if (seen.has(item.item_id)) return false;
@@ -51,30 +50,33 @@ const Index = () => {
         subtitle: item.item_subtitle || undefined,
       }));
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 
   return (
-    <div className="min-h-screen bg-background relative">
-      {/* Grid wave effect background - covers hero through games section */}
-      <div className="absolute inset-x-0 top-0 h-[1100px] overflow-hidden pointer-events-none z-0">
-        <GridWaveEffect />
-      </div>
-      
+    <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="pt-16 relative z-10">
+      <main className="pt-16">
+        {/* Hero with full-bleed background */}
         <HeroSection />
+
+        {/* Stats bar */}
+        <StatsBar />
         
         <div className="container mx-auto px-4 pb-20">
-          {/* Sound Wave Animation */}
-          <div className="relative mb-8 py-4">
-            <SoundWaveAnimation />
-          </div>
-          
-          {/* Random Game */}
+          {/* Feature Cards - inspired by the website inspo layout */}
+          <FeatureCards />
+
+          {/* Game Section */}
           <div className="mb-12">
-            {randomGame === "thisOrThat" ? <ThisOrThat /> : <HigherLowerGame />}
+            <Suspense fallback={
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            }>
+              {randomGame === "thisOrThat" ? <ThisOrThat /> : <HigherLowerGame />}
+            </Suspense>
           </div>
 
           {/* Two Column Layout */}
@@ -169,7 +171,6 @@ const Index = () => {
 
             {/* Sidebar */}
             <div className="space-y-8">
-              {/* Quick Links */}
               <section className="py-8">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="font-display text-2xl font-bold">Explore</h2>
