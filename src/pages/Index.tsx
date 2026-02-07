@@ -233,7 +233,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>&copy; 2024 Remelic. All rights reserved.</p>
+          <p>&copy; 2026 Remelic. All rights reserved.</p>
           <p className="mt-2">
             Powered by MusicBrainz (CC0), Cover Art Archive (CC0) &amp; ListenBrainz
           </p>
