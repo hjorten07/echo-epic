@@ -1,60 +1,37 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Music2, Star, Users, ArrowRight, Search } from "lucide-react";
-import { VinylLoader } from "./VinylLoader";
+import { ArrowRight, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import heroConcert from "@/assets/hero-concert.jpg";
 
 export const HeroSection = () => {
   const { user } = useAuth();
 
-  // Fetch public stats using security definer function (works without auth)
-  const { data: publicStats } = useQuery({
-    queryKey: ["public-stats"],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_public_stats");
-      if (error) {
-        console.error("Error fetching public stats:", error);
-        return { total_users: 0, total_ratings: 0 };
-      }
-      return data as { total_users: number; total_ratings: number };
-    },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-  });
-
-  const formatCount = (count: number) => {
-    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
-    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
-    return count.toString();
-  };
-
   return (
-    <section className="relative min-h-[80vh] flex items-center overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-      <div className="absolute top-20 right-10 opacity-20">
-        <VinylLoader size="lg" />
+    <section className="relative min-h-[85vh] flex items-center overflow-hidden">
+      {/* Full-bleed background image */}
+      <div className="absolute inset-0">
+        <img
+          src={heroConcert}
+          alt=""
+          className="w-full h-full object-cover"
+          loading="eager"
+          fetchPriority="high"
+        />
+        {/* Dark overlay for readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/50 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/60 to-transparent" />
       </div>
-      <div className="absolute bottom-20 left-10 opacity-10">
-        <VinylLoader size="lg" />
-      </div>
-      
-      {/* Grid Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
 
       <div className="container mx-auto px-4 py-20 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50 border border-border/50 mb-8 animate-fade-in">
-            <Music2 className="w-4 h-4 text-primary" />
-            <span className="text-sm text-muted-foreground">
-              The ultimate music rating platform
-            </span>
-          </div>
+        <div className="max-w-3xl">
+          {/* Catchphrase */}
+          <p className="text-primary font-display text-lg md:text-xl font-semibold tracking-wide mb-4 animate-fade-in">
+            Music sounds better with you
+          </p>
 
           {/* Headline */}
-          <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold mb-6 animate-fade-in">
+          <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold mb-6 animate-fade-in leading-tight">
             Rate Your{" "}
             <span className="gradient-text">Favorite Music</span>
             <br />
@@ -62,13 +39,13 @@ export const HeroSection = () => {
           </h1>
 
           {/* Subtitle */}
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in">
-            Join music lovers rating artists, albums, and songs. 
+          <p className="text-lg md:text-xl text-muted-foreground max-w-xl mb-10 animate-fade-in">
+            Join music lovers rating artists, albums, and songs.
             Build your profile, share your taste, and find your next obsession.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 animate-fade-in">
+          <div className="flex flex-col sm:flex-row items-start gap-4 animate-fade-in">
             {user ? (
               <>
                 <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 story-link" asChild>
@@ -77,7 +54,7 @@ export const HeroSection = () => {
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" className="px-8 story-link" asChild>
+                <Button size="lg" variant="outline" className="px-8 story-link border-foreground/20 hover:bg-foreground/10" asChild>
                   <Link to="/search">
                     <Search className="w-4 h-4 mr-2" />
                     Explore Music
@@ -92,7 +69,7 @@ export const HeroSection = () => {
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" className="px-8 story-link" asChild>
+                <Button size="lg" variant="outline" className="px-8 story-link border-foreground/20 hover:bg-foreground/10" asChild>
                   <Link to="/search">
                     <Search className="w-4 h-4 mr-2" />
                     Explore Music
@@ -100,35 +77,6 @@ export const HeroSection = () => {
                 </Button>
               </>
             )}
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-8 max-w-lg mx-auto animate-fade-in">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Star className="w-5 h-5 text-primary" />
-                <span className="font-display text-2xl md:text-3xl font-bold">
-                  {formatCount(publicStats?.total_ratings || 0)}
-                </span>
-              </div>
-              <span className="text-sm text-muted-foreground">Ratings</span>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Users className="w-5 h-5 text-primary" />
-                <span className="font-display text-2xl md:text-3xl font-bold">
-                  {formatCount(publicStats?.total_users || 0)}
-                </span>
-              </div>
-              <span className="text-sm text-muted-foreground">Users</span>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Music2 className="w-5 h-5 text-primary" />
-                <span className="font-display text-2xl md:text-3xl font-bold">30M+</span>
-              </div>
-              <span className="text-sm text-muted-foreground">Tracks</span>
-            </div>
           </div>
         </div>
       </div>
