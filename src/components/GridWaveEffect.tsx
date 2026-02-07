@@ -6,33 +6,45 @@ interface GridWaveEffectProps {
 
 /**
  * Interactive grid wave effect that responds to cursor movement.
- * Creates music visualizer-like waves pulsing outward from cursor in a grid pattern.
- * Only active for Navy Gold theme.
+ * Optimized: pauses when off-screen, disabled on mobile, caches CSS vars.
  */
 export const GridWaveEffect = memo(({ className = "" }: GridWaveEffectProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
-  const wavesRef = useRef<Array<{
-    x: number;
-    y: number;
-    radius: number;
-    opacity: number;
-    startTime: number;
-  }>>([]);
-  const mouseRef = useRef({ x: 0, y: 0, lastX: 0, lastY: 0 });
-  const lastWaveTimeRef = useRef(0);
 
   useEffect(() => {
+    // Skip entirely on mobile/tablet for performance
+    if (window.innerWidth < 768) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Effect is now available on all themes
-    const checkTheme = () => {
-      return true; // Enable for all color schemes
+    let isVisible = true;
+    let animationFrameId: number;
+
+    // Cache CSS vars (re-read only on theme change)
+    let cachedH = "38", cachedS = "76%", cachedL = "55%";
+    const readCssVars = () => {
+      const style = getComputedStyle(document.documentElement);
+      const parts = style.getPropertyValue("--primary").trim().split(/\s+/);
+      cachedH = parts[0] || "38";
+      cachedS = parts[1] || "76%";
+      cachedL = parts[2] || "55%";
     };
+    readCssVars();
+
+    // Watch for theme changes
+    const themeObserver = new MutationObserver(readCssVars);
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+
+    // Pause when not visible
+    const visibilityObserver = new IntersectionObserver(
+      ([entry]) => { isVisible = entry.isIntersecting; },
+      { threshold: 0 }
+    );
+    visibilityObserver.observe(canvas);
 
     const resizeCanvas = () => {
       const parent = canvas.parentElement;
@@ -41,130 +53,87 @@ export const GridWaveEffect = memo(({ className = "" }: GridWaveEffectProps) => 
         canvas.height = parent.offsetHeight;
       }
     };
-
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
 
-    // Grid settings - optimized for performance
-    const gridSize = 50; // Larger grid = fewer points to render
-    const waveSpeed = 120; // Slightly slower for smoother animation
-    const waveDuration = 800; // Shorter duration = fewer active waves
-    const waveInterval = 150; // Less frequent waves
+    const gridSize = 50;
+    const waveSpeed = 120;
+    const waveDuration = 800;
+    const waveInterval = 150;
 
+    const waves: Array<{ x: number; y: number; opacity: number; startTime: number }> = [];
+    const mouse = { x: 0, y: 0, lastX: 0, lastY: 0 };
+    let lastWaveTime = 0;
     let lastMoveTime = 0;
-    const throttleMs = 32; // ~30fps for mouse tracking
 
     const handleMouseMove = (e: MouseEvent) => {
       const now = Date.now();
-      
-      // Throttle mouse move processing
-      if (now - lastMoveTime < throttleMs) return;
+      if (now - lastMoveTime < 32) return;
       lastMoveTime = now;
-      
-      const rect = canvas.getBoundingClientRect();
-      mouseRef.current.x = e.clientX - rect.left;
-      mouseRef.current.y = e.clientY - rect.top;
 
-      // Create new wave if enough time passed
-      if (now - lastWaveTimeRef.current > waveInterval && checkTheme()) {
-        // Calculate distance moved
-        const dx = mouseRef.current.x - mouseRef.current.lastX;
-        const dy = mouseRef.current.y - mouseRef.current.lastY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance > 15) { // Require more movement
-          wavesRef.current.push({
-            x: mouseRef.current.x,
-            y: mouseRef.current.y,
-            radius: 0,
-            opacity: 0.4, // Slightly lower opacity
-            startTime: now,
-          });
-          
-          // Limit waves array size - fewer concurrent waves
-          if (wavesRef.current.length > 8) {
-            wavesRef.current.shift();
-          }
-          
-          lastWaveTimeRef.current = now;
-          mouseRef.current.lastX = mouseRef.current.x;
-          mouseRef.current.lastY = mouseRef.current.y;
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+
+      if (now - lastWaveTime > waveInterval) {
+        const dx = mouse.x - mouse.lastX;
+        const dy = mouse.y - mouse.lastY;
+        if (dx * dx + dy * dy > 225) {
+          waves.push({ x: mouse.x, y: mouse.y, opacity: 0.4, startTime: now });
+          if (waves.length > 8) waves.shift();
+          lastWaveTime = now;
+          mouse.lastX = mouse.x;
+          mouse.lastY = mouse.y;
         }
       }
     };
-
     document.addEventListener("mousemove", handleMouseMove);
 
-    let animationFrameId: number;
     let lastFrameTime = 0;
-    const targetFps = 30; // Cap at 30fps for performance
-    const frameInterval = 1000 / targetFps;
+    const frameInterval = 1000 / 30;
 
     const animate = (currentTime: number) => {
-      if (!ctx || !canvas) return;
-      
-      // Throttle frame rate
-      const elapsed = currentTime - lastFrameTime;
-      if (elapsed < frameInterval) {
-        animationFrameId = requestAnimationFrame(animate);
-        return;
-      }
-      lastFrameTime = currentTime - (elapsed % frameInterval);
-      
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      animationFrameId = requestAnimationFrame(animate);
 
+      if (!isVisible) return;
+      if (currentTime - lastFrameTime < frameInterval) return;
+      lastFrameTime = currentTime - ((currentTime - lastFrameTime) % frameInterval);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       const now = Date.now();
 
-      // Get primary color from CSS (cache this)
-      const computedStyle = getComputedStyle(document.documentElement);
-      const primaryHsl = computedStyle.getPropertyValue("--primary").trim();
-      const hslParts = primaryHsl.split(/\s+/);
-      const h = hslParts[0] || "38";
-      const s = hslParts[1] || "76%";
-      const l = hslParts[2] || "55%";
-
-      // Draw grid points with wave influence
       ctx.globalCompositeOperation = "screen";
-      
+
       for (let x = gridSize / 2; x < canvas.width; x += gridSize) {
         for (let y = gridSize / 2; y < canvas.height; y += gridSize) {
           let totalInfluence = 0;
-          
-          // Calculate influence from all active waves
-          for (const wave of wavesRef.current) {
+
+          for (const wave of waves) {
             const age = now - wave.startTime;
             if (age > waveDuration) continue;
-            
+
             const currentRadius = (age / 1000) * waveSpeed;
             const dx = x - wave.x;
             const dy = y - wave.y;
             const distFromCenter = Math.sqrt(dx * dx + dy * dy);
-            
-            // Wave ring effect
             const ringWidth = 25;
             const distFromRing = Math.abs(distFromCenter - currentRadius);
-            
+
             if (distFromRing < ringWidth) {
-              const ringFade = 1 - (distFromRing / ringWidth);
-              const timeFade = 1 - (age / waveDuration);
-              totalInfluence += ringFade * timeFade * wave.opacity;
+              totalInfluence += (1 - distFromRing / ringWidth) * (1 - age / waveDuration) * wave.opacity;
             }
           }
 
-          // Draw grid point with influence
-          const baseOpacity = 0.06;
-          const opacity = Math.min(0.5, baseOpacity + totalInfluence * 0.4);
+          const opacity = Math.min(0.5, 0.06 + totalInfluence * 0.4);
           const size = 1.5 + totalInfluence * 2.5;
-          
-          ctx.fillStyle = `hsla(${h}, ${s}, ${l}, ${opacity})`;
+
+          ctx.fillStyle = `hsla(${cachedH}, ${cachedS}, ${cachedL}, ${opacity})`;
           ctx.beginPath();
           ctx.arc(x, y, size, 0, Math.PI * 2);
           ctx.fill();
-          
-          // Add glow for active points (simplified)
+
           if (totalInfluence > 0.15) {
-            ctx.shadowColor = `hsla(${h}, ${s}, ${l}, ${totalInfluence * 0.3})`;
+            ctx.shadowColor = `hsla(${cachedH}, ${cachedS}, ${cachedL}, ${totalInfluence * 0.3})`;
             ctx.shadowBlur = totalInfluence * 8;
             ctx.fill();
             ctx.shadowBlur = 0;
@@ -172,28 +141,24 @@ export const GridWaveEffect = memo(({ className = "" }: GridWaveEffectProps) => 
         }
       }
 
-      // Draw wave rings (simplified)
       ctx.globalCompositeOperation = "source-over";
-      for (const wave of wavesRef.current) {
+      for (const wave of waves) {
         const age = now - wave.startTime;
         if (age > waveDuration) continue;
-        
         const currentRadius = (age / 1000) * waveSpeed;
-        const timeFade = 1 - (age / waveDuration);
-        
-        ctx.strokeStyle = `hsla(${h}, ${s}, ${l}, ${timeFade * 0.2})`;
+        const timeFade = 1 - age / waveDuration;
+        ctx.strokeStyle = `hsla(${cachedH}, ${cachedS}, ${cachedL}, ${timeFade * 0.2})`;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.arc(wave.x, wave.y, currentRadius, 0, Math.PI * 2);
         ctx.stroke();
       }
 
-      // Clean up old waves
-      wavesRef.current = wavesRef.current.filter(
-        wave => now - wave.startTime < waveDuration
-      );
-
-      animationFrameId = requestAnimationFrame(animate);
+      // Clean old waves
+      let i = waves.length;
+      while (i--) {
+        if (now - waves[i].startTime > waveDuration) waves.splice(i, 1);
+      }
     };
 
     animationFrameId = requestAnimationFrame(animate);
@@ -201,9 +166,9 @@ export const GridWaveEffect = memo(({ className = "" }: GridWaveEffectProps) => 
     return () => {
       window.removeEventListener("resize", resizeCanvas);
       document.removeEventListener("mousemove", handleMouseMove);
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
+      cancelAnimationFrame(animationFrameId);
+      visibilityObserver.disconnect();
+      themeObserver.disconnect();
     };
   }, []);
 
