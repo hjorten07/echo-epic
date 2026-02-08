@@ -28,7 +28,7 @@ export const ScrollProgressBar = () => {
   }, []);
 
   return (
-    <div className="fixed top-16 left-0 right-0 z-50 h-[3px] bg-transparent pointer-events-none">
+    <div className="fixed top-14 sm:top-16 left-0 right-0 z-50 h-[2px] sm:h-[3px] bg-transparent pointer-events-none">
       <div
         ref={barRef}
         className="h-full bg-primary"
