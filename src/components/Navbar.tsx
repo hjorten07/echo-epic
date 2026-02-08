@@ -42,21 +42,21 @@ export const Navbar = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass-card border-b border-border/50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <nav className="fixed top-0 left-0 right-0 z-50 glass-card border-b border-border/50" role="navigation" aria-label="Main navigation">
+      <div className="container mx-auto px-3 sm:px-4">
+        <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="relative w-10 h-10 rounded-full bg-primary flex items-center justify-center group-hover:animate-pulse-glow transition-all">
-              <Music2 className="w-5 h-5 text-primary-foreground" />
+          <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
+            <div className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary flex items-center justify-center group-hover:animate-pulse-glow transition-all">
+              <Music2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-xl hidden sm:block">
+            <span className="font-display font-bold text-lg sm:text-xl hidden sm:block">
               <span className="text-primary">Remelic</span>
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-4 lg:gap-6">
             <Link
               to="/"
               className={cn(
@@ -100,7 +100,7 @@ export const Navbar = () => {
           </div>
 
           {/* Search Bar */}
-          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-6">
+          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xs lg:max-w-md mx-4 lg:mx-6">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -114,7 +114,7 @@ export const Navbar = () => {
           </form>
 
           {/* Right Side */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             {loading ? (
               <div className="w-8 h-8 rounded-full bg-secondary animate-pulse" />
             ) : isLoggedIn ? (
@@ -126,17 +126,17 @@ export const Navbar = () => {
                 {/* Profile Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center gap-2 px-2">
-                      <div className="w-8 h-8 rounded-full bg-secondary overflow-hidden">
+                    <Button variant="ghost" className="flex items-center gap-1 sm:gap-2 px-1.5 sm:px-2">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-secondary overflow-hidden">
                         {avatarUrl ? (
                           <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-primary text-primary-foreground font-bold">
+                          <div className="w-full h-full flex items-center justify-center bg-primary text-primary-foreground font-bold text-sm">
                             {username[0]?.toUpperCase() || "U"}
                           </div>
                         )}
                       </div>
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground hidden sm:block" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
@@ -164,20 +164,20 @@ export const Navbar = () => {
                 </DropdownMenu>
               </>
             ) : (
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" asChild>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Button variant="ghost" size="sm" asChild>
                   <Link to="/auth">Log In</Link>
                 </Button>
-                <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Button size="sm" asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
                   <Link to="/auth?mode=signup">Sign Up</Link>
                 </Button>
               </div>
             )}
 
-            {/* Mobile Menu Toggle - visible on mobile only */}
+            {/* Menu Toggle - visible on all sizes */}
             <MobileMenu
               trigger={
-                <Button variant="ghost" size="sm" className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" className="flex items-center gap-1 px-2">
                   <Menu className="w-5 h-5" />
                   <span className="hidden sm:inline text-sm">Menu</span>
                 </Button>
@@ -185,7 +185,6 @@ export const Navbar = () => {
             />
           </div>
         </div>
-
       </div>
       <ScrollProgressBar />
     </nav>

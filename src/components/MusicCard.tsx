@@ -43,6 +43,7 @@ export const MusicCard = memo(forwardRef<HTMLAnchorElement, MusicCardProps>(({
       className={cn(
         "group block glass-card rounded-xl overflow-hidden transition-all duration-300",
         "hover:shadow-glow hover:-translate-y-1 hover:border-primary/30",
+        "focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
         className
       )}
     >

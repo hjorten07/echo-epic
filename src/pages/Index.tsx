@@ -57,19 +57,19 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="pt-16">
+      <main className="pt-14 sm:pt-16">
         {/* Hero with full-bleed background */}
         <HeroSection />
 
         {/* Stats bar */}
         <StatsBar />
         
-        <div className="container mx-auto px-4 pb-20">
-          {/* Feature Cards - inspired by the website inspo layout */}
+        <div className="container mx-auto px-3 sm:px-4 pb-12 sm:pb-16 md:pb-20">
+          {/* Feature Cards */}
           <FeatureCards />
 
           {/* Game Section */}
-          <div className="mb-12">
+          <div className="mb-8 sm:mb-10 md:mb-12">
             <Suspense fallback={
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -80,18 +80,18 @@ const Index = () => {
           </div>
 
           {/* Two Column Layout */}
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-8">
+            <div className="lg:col-span-2 space-y-6 sm:space-y-8">
               {/* Discover */}
               <section>
-                <h2 className="font-display text-2xl font-bold mb-6">Discover Music</h2>
+                <h2 className="font-display text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Discover Music</h2>
                 {discoverLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
                 ) : discoverMusic && discoverMusic.length > 0 ? (
-                  <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-4">
                     {discoverMusic.map((item, index) => (
                       <MusicCard
                         key={`${item.type}-${item.id}`}
@@ -101,30 +101,30 @@ const Index = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="glass-card rounded-xl p-8 text-center">
+                  <div className="glass-card rounded-xl p-6 sm:p-8 text-center">
                     <p className="text-muted-foreground">Use the search to find music!</p>
                   </div>
                 )}
               </section>
 
               {/* Recently Rated */}
-              <section className="py-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="font-display text-2xl font-bold">Recently Rated</h2>
+              <section className="py-4 sm:py-6 md:py-8">
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <h2 className="font-display text-xl sm:text-2xl font-bold">Recently Rated</h2>
                 </div>
                 {recentLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
                 ) : recentRatings && recentRatings.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {recentRatings.map((rating: any) => (
                       <Link
                         key={rating.id}
                         to={`/${rating.item_type}/${rating.item_id}`}
-                        className="flex items-center gap-4 p-4 rounded-xl glass-card hover:border-primary/30 transition-all"
+                        className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl glass-card hover:border-primary/30 transition-all"
                       >
-                        <div className="w-12 h-12 rounded-lg bg-secondary overflow-hidden flex-shrink-0">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-secondary overflow-hidden flex-shrink-0">
                           {rating.item_image ? (
                             <LazyImage
                               src={rating.item_image}
@@ -134,27 +134,29 @@ const Index = () => {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <span className="text-lg font-bold text-muted-foreground">
+                              <span className="text-base sm:text-lg font-bold text-muted-foreground">
                                 {rating.item_name[0]}
                               </span>
                             </div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{rating.item_name}</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="font-medium truncate text-sm sm:text-base">{rating.item_name}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             Rated by{" "}
                             <span className="text-primary">{rating.profiles?.username || "Unknown"}</span>
                             {" · "}
                             {format(new Date(rating.created_at), "MMM d")}
                           </p>
                         </div>
-                        <StarRating rating={rating.rating} readonly size="sm" showValue />
+                        <div className="flex-shrink-0">
+                          <StarRating rating={rating.rating} readonly size="sm" showValue />
+                        </div>
                       </Link>
                     ))}
                   </div>
                 ) : (
-                  <div className="glass-card rounded-xl p-8 text-center">
+                  <div className="glass-card rounded-xl p-6 sm:p-8 text-center">
                     <p className="text-muted-foreground">
                       No ratings yet. Be the first to rate something!
                     </p>
@@ -170,58 +172,58 @@ const Index = () => {
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-8">
-              <section className="py-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="font-display text-2xl font-bold">Explore</h2>
+            <div className="space-y-6 sm:space-y-8">
+              <section className="py-4 sm:py-6 md:py-8">
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <h2 className="font-display text-xl sm:text-2xl font-bold">Explore</h2>
                 </div>
-                <div className="space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-1 gap-2 sm:gap-3">
                   <Link
                     to="/top100"
-                    className="flex items-center gap-3 p-4 rounded-lg glass-card hover:border-primary/30 transition-all"
+                    className="flex items-center gap-3 p-3 sm:p-4 rounded-lg glass-card hover:border-primary/30 transition-all"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <span className="text-xl">🏆</span>
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <span className="text-lg sm:text-xl">🏆</span>
                     </div>
-                    <div>
-                      <p className="font-medium">Top 100</p>
-                      <p className="text-xs text-muted-foreground">Best rated music</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base">Top 100</p>
+                      <p className="text-xs text-muted-foreground hidden sm:block">Best rated music</p>
                     </div>
                   </Link>
                   <Link
                     to="/recommendations"
-                    className="flex items-center gap-3 p-4 rounded-lg glass-card hover:border-primary/30 transition-all"
+                    className="flex items-center gap-3 p-3 sm:p-4 rounded-lg glass-card hover:border-primary/30 transition-all"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <span className="text-xl">✨</span>
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <span className="text-lg sm:text-xl">✨</span>
                     </div>
-                    <div>
-                      <p className="font-medium">For You</p>
-                      <p className="text-xs text-muted-foreground">Personalized picks</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base">For You</p>
+                      <p className="text-xs text-muted-foreground hidden sm:block">Personalized picks</p>
                     </div>
                   </Link>
                   <Link
                     to="/games"
-                    className="flex items-center gap-3 p-4 rounded-lg glass-card hover:border-primary/30 transition-all"
+                    className="flex items-center gap-3 p-3 sm:p-4 rounded-lg glass-card hover:border-primary/30 transition-all"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <span className="text-xl">🎮</span>
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <span className="text-lg sm:text-xl">🎮</span>
                     </div>
-                    <div>
-                      <p className="font-medium">Games</p>
-                      <p className="text-xs text-muted-foreground">Fun music challenges</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base">Games</p>
+                      <p className="text-xs text-muted-foreground hidden sm:block">Fun music challenges</p>
                     </div>
                   </Link>
                   <Link
                     to="/social"
-                    className="flex items-center gap-3 p-4 rounded-lg glass-card hover:border-primary/30 transition-all"
+                    className="flex items-center gap-3 p-3 sm:p-4 rounded-lg glass-card hover:border-primary/30 transition-all"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <span className="text-xl">👥</span>
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <span className="text-lg sm:text-xl">👥</span>
                     </div>
-                    <div>
-                      <p className="font-medium">Social</p>
-                      <p className="text-xs text-muted-foreground">Connect with others</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base">Social</p>
+                      <p className="text-xs text-muted-foreground hidden sm:block">Connect with others</p>
                     </div>
                   </Link>
                 </div>
@@ -232,8 +234,8 @@ const Index = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border py-8">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+      <footer className="border-t border-border py-6 sm:py-8">
+        <div className="container mx-auto px-4 text-center text-xs sm:text-sm text-muted-foreground">
           <p>&copy; 2026 Remelic. All rights reserved.</p>
           <p className="mt-2">
             Powered by MusicBrainz (CC0), Cover Art Archive (CC0) &amp; ListenBrainz
