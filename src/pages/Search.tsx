@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search as SearchIcon, Music2, Disc3, Mic2, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
@@ -31,11 +31,18 @@ const Search = () => {
     { value: "song" as const, label: "Songs", icon: Music2 },
   ];
 
+  const abortRef = useRef<AbortController | null>(null);
+
   const performSearch = useCallback(async (searchQuery: string, type: SearchType) => {
     if (!searchQuery.trim()) {
       setResults([]);
       return;
     }
+
+    // Cancel previous in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     setIsLoading(true);
     try {
@@ -43,32 +50,38 @@ const Search = () => {
       
       switch (type) {
         case "artist":
-          searchResults = await searchArtists(searchQuery, 20);
+          searchResults = await searchArtists(searchQuery, 20, controller.signal);
           break;
         case "album":
-          searchResults = await searchAlbums(searchQuery, 20);
+          searchResults = await searchAlbums(searchQuery, 20, controller.signal);
           break;
         case "song":
-          searchResults = await searchSongs(searchQuery, 20);
+          searchResults = await searchSongs(searchQuery, 20, controller.signal);
           break;
         default:
-          searchResults = await searchAll(searchQuery, 8);
+          searchResults = await searchAll(searchQuery, 8, controller.signal);
       }
       
-      setResults(searchResults);
+      if (!controller.signal.aborted) {
+        setResults(searchResults);
+      }
     } catch (error) {
-      console.error("Search error:", error);
-      setResults([]);
+      if ((error as Error).name !== 'AbortError') {
+        console.error("Search error:", error);
+        setResults([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (!controller.signal.aborted) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
-  // Debounced search
+  // Debounced search — fast 250ms debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       performSearch(query, activeType);
-    }, 500);
+    }, 250);
 
     return () => clearTimeout(timer);
   }, [query, activeType, performSearch]);
