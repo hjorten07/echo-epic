@@ -9,10 +9,22 @@ const BASE_URL = "https://musicbrainz.org/ws/2";
 const COVER_ART_URL = "https://coverartarchive.org";
 const USER_AGENT = "Remelic/1.0.0 (https://remelic.app)";
 
-// Rate limiting: MusicBrainz requires 1 request per second
+// Rate limiting: MusicBrainz requires 1 request per second for detail endpoints
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 1100; // 1.1 seconds to be safe
 
+// Fast fetch for search queries — no rate limit, uses AbortController for cancellation
+function searchFetch(url: string, signal?: AbortSignal): Promise<Response> {
+  return fetch(url, {
+    headers: {
+      "User-Agent": USER_AGENT,
+      "Accept": "application/json",
+    },
+    signal,
+  });
+}
+
+// Rate-limited fetch for detail/lookup endpoints only
 async function rateLimitedFetch(url: string): Promise<Response> {
   const now = Date.now();
   const timeSinceLastRequest = now - lastRequestTime;
@@ -158,12 +170,20 @@ async function batchFetchCoverArt(ids: string[]): Promise<Map<string, string | n
 }
 
 // Search for artists (including custom artists from database)
-export async function searchArtists(query: string, limit = 25): Promise<SearchResult[]> {
+export async function searchArtists(query: string, limit = 25, signal?: AbortSignal): Promise<SearchResult[]> {
   try {
-    // Search MusicBrainz artists
-    const response = await rateLimitedFetch(
-      `${BASE_URL}/artist?query=${encodeURIComponent(query)}&limit=${limit}&fmt=json`
-    );
+    // Fire both queries in parallel
+    const [response, customResult] = await Promise.all([
+      searchFetch(
+        `${BASE_URL}/artist?query=${encodeURIComponent(query)}&limit=${limit}&fmt=json`,
+        signal
+      ),
+      supabase
+        .from("custom_artists")
+        .select("*")
+        .ilike("name", `%${query}%`)
+        .limit(10),
+    ]);
     
     if (!response.ok) throw new Error("Failed to search artists");
     
@@ -175,17 +195,10 @@ export async function searchArtists(query: string, limit = 25): Promise<SearchRe
       type: "artist" as const,
       name: artist.name,
       subtitle: artist.disambiguation || artist.country || artist.type,
-      imageUrl: undefined, // No images for artists (CC0 compliance)
+      imageUrl: undefined,
     }));
 
-    // Also search custom artists from database
-    const { data: customArtists } = await supabase
-      .from("custom_artists")
-      .select("*")
-      .ilike("name", `%${query}%`)
-      .limit(10);
-
-    const customResults: SearchResult[] = (customArtists || []).map((artist) => ({
+    const customResults: SearchResult[] = (customResult.data || []).map((artist) => ({
       id: `custom_${artist.id}`,
       type: "artist" as const,
       name: artist.name,
@@ -193,19 +206,20 @@ export async function searchArtists(query: string, limit = 25): Promise<SearchRe
       imageUrl: artist.image_url || undefined,
     }));
 
-    // Merge results, prioritizing custom artists at the top
     return [...customResults, ...mbResults].slice(0, limit);
   } catch (error) {
+    if ((error as Error).name === 'AbortError') return [];
     console.error("Error searching artists:", error);
     return [];
   }
 }
 
-// Search for releases (albums) - sorted by ListenBrainz popularity
-export async function searchAlbums(query: string, limit = 25): Promise<SearchResult[]> {
+// Search for releases (albums) — returns results immediately, no cover art blocking
+export async function searchAlbums(query: string, limit = 25, signal?: AbortSignal): Promise<SearchResult[]> {
   try {
-    const response = await rateLimitedFetch(
-      `${BASE_URL}/release-group?query=${encodeURIComponent(query)}&limit=${limit}&fmt=json`
+    const response = await searchFetch(
+      `${BASE_URL}/release-group?query=${encodeURIComponent(query)}&limit=${limit}&fmt=json`,
+      signal
     );
     
     if (!response.ok) throw new Error("Failed to search albums");
@@ -213,28 +227,26 @@ export async function searchAlbums(query: string, limit = 25): Promise<SearchRes
     const data = await response.json();
     const albums = (data["release-groups"] || []).slice(0, limit);
     
-    // Batch fetch cover art from Cover Art Archive (CC0)
-    const ids = albums.map((rg: MusicBrainzReleaseGroup) => rg.id);
-    const images = await batchFetchCoverArt(ids);
-    
     return albums.map((rg: MusicBrainzReleaseGroup) => ({
       id: rg.id,
       type: "album" as const,
       name: rg.title,
       subtitle: rg["artist-credit"]?.[0]?.artist?.name,
-      imageUrl: images.get(rg.id) || undefined,
+      imageUrl: undefined, // Images loaded lazily by MusicCard
     }));
   } catch (error) {
+    if ((error as Error).name === 'AbortError') return [];
     console.error("Error searching albums:", error);
     return [];
   }
 }
 
-// Search for recordings (songs) - sorted by ListenBrainz popularity
-export async function searchSongs(query: string, limit = 25): Promise<SearchResult[]> {
+// Search for recordings (songs) — returns results immediately, no popularity blocking
+export async function searchSongs(query: string, limit = 25, signal?: AbortSignal): Promise<SearchResult[]> {
   try {
-    const response = await rateLimitedFetch(
-      `${BASE_URL}/recording?query=${encodeURIComponent(query)}&limit=${limit}&fmt=json`
+    const response = await searchFetch(
+      `${BASE_URL}/recording?query=${encodeURIComponent(query)}&limit=${limit}&fmt=json`,
+      signal
     );
     
     if (!response.ok) throw new Error("Failed to search songs");
@@ -242,39 +254,28 @@ export async function searchSongs(query: string, limit = 25): Promise<SearchResu
     const data = await response.json();
     const songs = (data.recordings || []).slice(0, limit);
     
-    // Get recording IDs for popularity lookup
-    const recordingIds = songs.map((rec: MusicBrainzRecording) => rec.id);
-    
-    // Fetch popularity from ListenBrainz
-    const popularityMap = await batchGetRecordingPopularity(recordingIds);
-    
-    const results: SearchResult[] = songs.map((rec: MusicBrainzRecording) => {
-      const artistName = rec["artist-credit"]?.[0]?.artist?.name;
-      return {
-        id: rec.id,
-        type: "song" as const,
-        name: rec.title,
-        subtitle: artistName,
-        imageUrl: undefined, // No images for songs without album context
-        popularity: popularityMap.get(rec.id) || 0,
-      };
-    });
-    
-    // Sort by popularity (most popular first)
-    return sortByPopularity(results, popularityMap);
+    return songs.map((rec: MusicBrainzRecording) => ({
+      id: rec.id,
+      type: "song" as const,
+      name: rec.title,
+      subtitle: rec["artist-credit"]?.[0]?.artist?.name,
+      imageUrl: undefined,
+    }));
   } catch (error) {
+    if ((error as Error).name === 'AbortError') return [];
     console.error("Error searching songs:", error);
     return [];
   }
 }
 
 // Combined search
-export async function searchAll(query: string, limit = 10): Promise<SearchResult[]> {
+// Combined search — all 3 fire truly in parallel (no rate limiting)
+export async function searchAll(query: string, limit = 10, signal?: AbortSignal): Promise<SearchResult[]> {
   try {
     const [artists, albums, songs] = await Promise.all([
-      searchArtists(query, limit),
-      searchAlbums(query, limit),
-      searchSongs(query, limit),
+      searchArtists(query, limit, signal),
+      searchAlbums(query, limit, signal),
+      searchSongs(query, limit, signal),
     ]);
     
     // Interleave results
@@ -289,6 +290,7 @@ export async function searchAll(query: string, limit = 10): Promise<SearchResult
     
     return results.slice(0, limit * 3);
   } catch (error) {
+    if ((error as Error).name === 'AbortError') return [];
     console.error("Error in combined search:", error);
     return [];
   }
