@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, User, Settings, LogOut, Menu, Music2, Home, Users, ChevronDown, TrendingUp, Gamepad2 } from "lucide-react";
+import { Search, User, Settings, LogOut, Menu, Home, Users, ChevronDown, TrendingUp, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { MessagesDropdown } from "./MessagesDropdown";
 import { MobileMenu } from "./MobileMenu";
+import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
 import { ScrollProgressBar } from "./ScrollProgressBar";
 
@@ -46,13 +47,8 @@ export const Navbar = () => {
       <div className="container mx-auto px-3 sm:px-4">
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
-            <div className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary flex items-center justify-center group-hover:animate-pulse-glow transition-all">
-              <Music2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-lg sm:text-xl hidden sm:block">
-              <span className="text-primary">Remelic</span>
-            </span>
+          <Link to="/" className="flex items-center gap-2 group flex-shrink-0 hover:opacity-80 transition-opacity">
+            <Logo size="md" showText={true} />
           </Link>
 
           {/* Desktop Navigation */}

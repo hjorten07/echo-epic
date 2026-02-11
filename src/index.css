@@ -493,6 +493,23 @@
     }
   }
 
+  /* Performance optimizations for mobile */
+  @media (max-width: 640px) {
+    * {
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+  }
+
+  /* Enable GPU acceleration for transforms */
+  img, video, iframe {
+    will-change: auto;
+  }
+
+  img {
+    image-rendering: -webkit-optimize-contrast;
+  }
+
   /* Touch-friendly minimum tap targets */
   @media (pointer: coarse) {
     button, a, [role="button"], input, select, textarea {

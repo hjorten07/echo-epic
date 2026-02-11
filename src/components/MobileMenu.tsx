@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, TrendingUp, Users, Gamepad2, Info, MessageSquare, Instagram, Twitter, Music2, X, Sparkles, ListMusic, Cookie, Shield } from "lucide-react";
+import { Home, TrendingUp, Users, Gamepad2, Info, MessageSquare, Instagram, Twitter, X, Sparkles, ListMusic, Cookie, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { Logo } from "./Logo";
 import { AboutModal } from "./AboutModal";
 import { SuggestionsModal } from "./SuggestionsModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -44,13 +45,8 @@ export const MobileMenu = ({ trigger }: MobileMenuProps) => {
         </SheetTrigger>
         <SheetContent side="left" className="w-80 bg-background border-border overflow-y-auto">
           <SheetHeader className="text-left">
-            <SheetTitle className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                <Music2 className="w-4 h-4 text-primary-foreground" />
-              </div>
-              <span className="font-display font-bold">
-                <span className="text-primary">Remelic</span>
-              </span>
+            <SheetTitle>
+              <Logo size="md" showText={true} />
             </SheetTitle>
           </SheetHeader>
 

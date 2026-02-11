@@ -35,10 +35,10 @@ export const LazyImage = memo(forwardRef<HTMLImageElement, LazyImageProps>(
       // Immediately check if already in viewport
       const rect = element.getBoundingClientRect();
       if (
-        rect.top < window.innerHeight + 100 &&
-        rect.bottom > -100 &&
-        rect.left < window.innerWidth + 100 &&
-        rect.right > -100
+        rect.top < window.innerHeight + 300 &&
+        rect.bottom > -300 &&
+        rect.left < window.innerWidth + 300 &&
+        rect.right > -300
       ) {
         setIsInView(true);
         return;
@@ -51,7 +51,7 @@ export const LazyImage = memo(forwardRef<HTMLImageElement, LazyImageProps>(
             observer.disconnect();
           }
         },
-        { rootMargin: "200px" }
+        { rootMargin: "300px" }
       );
 
       observer.observe(element);
