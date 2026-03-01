@@ -7,9 +7,9 @@ interface LogoProps {
 }
 
 const sizeMap = {
-  sm: { width: 32, height: 32 },
-  md: { width: 40, height: 40 },
-  lg: { width: 64, height: 64 },
+  sm: { width: 48, height: 48 },
+  md: { width: 80, height: 80 },
+  lg: { width: 120, height: 120 },
 };
 
 export const Logo = memo(({ size = "md", showText = false }: LogoProps) => {
