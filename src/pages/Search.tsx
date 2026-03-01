@@ -11,6 +11,7 @@ import {
   searchAlbums,
   searchSongs,
   SearchResult,
+  getCoverArt,
 } from "@/lib/musicbrainz";
 
 type SearchType = "all" | "artist" | "album" | "song";
@@ -85,6 +86,40 @@ const Search = () => {
 
     return () => clearTimeout(timer);
   }, [query, activeType, performSearch]);
+
+  // Fetch images for album results in background
+  useEffect(() => {
+    if (results.length === 0) return;
+
+    const albumIds = results
+      .filter(r => r.type === "album" && !r.imageUrl)
+      .map(r => r.id);
+
+    if (albumIds.length === 0) return;
+
+    const fetchImages = async () => {
+      const updates = new Map<string, string | null>();
+
+      for (const id of albumIds) {
+        try {
+          const url = await getCoverArt(id);
+          updates.set(id, url);
+        } catch {
+          updates.set(id, null);
+        }
+      }
+
+      setResults(prevResults =>
+        prevResults.map(result =>
+          result.type === "album" && updates.has(result.id)
+            ? { ...result, imageUrl: updates.get(result.id) || undefined }
+            : result
+        )
+      );
+    };
+
+    fetchImages();
+  }, [results]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
